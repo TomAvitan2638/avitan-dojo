@@ -43,7 +43,7 @@ Uploads use the service role key (bypasses RLS). No storage policy needed for MV
 ## Option B: Apply Migration Manually (If connection fails)
 
 1. Go to Supabase Dashboard → **SQL Editor**
-2. Copy the contents of `prisma/migrations/20260314144053_initial_schema/migration.sql`
+2. Copy the contents of `prisma/migrations/20250306000000_initial_schema/migration.sql`
 3. Paste and run the SQL
-4. Then run: `npx prisma migrate resolve --applied 20260314144053_initial_schema`
+4. Then run: `npx prisma migrate resolve --applied 20250306000000_initial_schema`
 5. Run: `npx prisma db seed`
