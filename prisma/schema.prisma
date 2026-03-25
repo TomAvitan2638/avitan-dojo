@@ -1,0 +1,381 @@
+// Karate Dojo Management System - Prisma Schema
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  ADMIN
+  INSTRUCTOR
+}
+
+enum StudentStatus {
+  active
+  expired
+  inactive
+  retired
+}
+
+enum MembershipStatus {
+  active
+  expired
+  cancelled
+}
+
+enum PaymentMethod {
+  cash
+  credit_card
+  check
+  bank_transfer
+  bit
+  paybox
+}
+
+enum PaymentType {
+  MONTHLY
+  EQUIPMENT
+  EXAM
+}
+
+enum MonthlyPaymentSubtype {
+  REGULAR
+  CHECK
+  WAIVER
+}
+
+enum TrainingDay {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+// ---------------------------------------------------------------------------
+// Users & Auth
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  role          UserRole
+  instructorId  String?   @unique @map("instructor_id")
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  instructor Instructor? @relation(fields: [instructorId], references: [id], onDelete: SetNull)
+
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Instructors
+// ---------------------------------------------------------------------------
+
+model Instructor {
+  id        String   @id @default(uuid())
+  firstName String   @map("first_name")
+  lastName  String   @map("last_name")
+  birthDate DateTime? @map("birth_date") @db.Date
+  phone     String?
+  email     String?
+  address   String?
+  city      String?
+  notes     String?
+  photoUrl  String?  @map("photo_url")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user    User?     @relation
+  centers Center[]
+  groups  Group[]
+
+  @@map("instructors")
+}
+
+// ---------------------------------------------------------------------------
+// Students
+// ---------------------------------------------------------------------------
+
+model Student {
+  id                 String        @id @default(uuid())
+  identifier         String        @unique @map("identifier")
+  studentNumber      Int?          @unique @map("student_number")
+  firstName          String        @map("first_name")
+  lastName           String        @map("last_name")
+  birthDate          DateTime?     @map("birth_date") @db.Date
+  gender             String?
+  phone              String?
+  mobilePhone        String?       @map("mobile_phone")
+  email              String?
+  address            String?
+  city               String?
+  street             String?
+  postalCode         String?       @map("postal_code")
+  height             Int?
+  weight             Int?
+  notes              String?
+  photoUrl           String?       @map("photo_url")
+  status             StudentStatus
+  hasMedicalApproval Boolean       @default(false) @map("has_medical_approval")
+  parentName         String?       @map("parent_name")
+  parentPhone        String?       @map("parent_phone")
+  emergencyDetails   String?       @map("emergency_details")
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  memberships     StudentMembership[]
+  payments        Payment[]
+  beltHistory     StudentBeltHistory[]
+
+  @@index([lastName, firstName])
+  @@index([status])
+  @@index([createdAt])
+  @@map("students")
+}
+
+// ---------------------------------------------------------------------------
+// Centers
+// ---------------------------------------------------------------------------
+
+model Center {
+  id           String   @id @default(uuid())
+  name         String
+  instructorId String?  @map("instructor_id")
+  price        Decimal? @db.Decimal(10, 2)
+  notes        String?
+
+  instructor Instructor? @relation(fields: [instructorId], references: [id], onDelete: SetNull)
+  groups      Group[]
+
+  @@map("centers")
+}
+
+// ---------------------------------------------------------------------------
+// Groups
+// ---------------------------------------------------------------------------
+
+model Group {
+  id               String   @id @default(uuid())
+  name             String
+  centerId         String   @map("center_id")
+  instructorId     String   @map("instructor_id")
+  genderRestriction String? @map("gender_restriction")
+  notes            String?
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  center   Center   @relation(fields: [centerId], references: [id], onDelete: Restrict)
+  instructor Instructor @relation(fields: [instructorId], references: [id], onDelete: Restrict)
+  schedules GroupSchedule[]
+  memberships StudentMembership[]
+
+  @@index([centerId])
+  @@index([instructorId])
+  @@map("groups")
+}
+
+// ---------------------------------------------------------------------------
+// Group Schedules
+// ---------------------------------------------------------------------------
+
+model GroupSchedule {
+  id          String      @id @default(uuid())
+  groupId     String      @map("group_id")
+  trainingDay TrainingDay @map("training_day")
+  startTime   DateTime    @map("start_time") @db.Time
+  endTime     DateTime    @map("end_time") @db.Time
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId])
+  @@map("group_schedules")
+}
+
+// ---------------------------------------------------------------------------
+// Student Memberships
+// ---------------------------------------------------------------------------
+
+model StudentMembership {
+  id              String           @id @default(uuid())
+  studentId       String           @map("student_id")
+  groupId         String           @map("group_id")
+  startDate       DateTime         @map("start_date") @db.Date
+  endDate         DateTime?        @map("end_date") @db.Date
+  status          MembershipStatus
+  paymentDueDate  DateTime?        @map("payment_due_date") @db.Date
+  notes           String?
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  student  Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  payments Payment[]
+
+  @@index([studentId])
+  @@index([groupId])
+  @@index([status])
+  @@index([endDate])
+  @@map("student_memberships")
+}
+
+// ---------------------------------------------------------------------------
+// Payments
+// ---------------------------------------------------------------------------
+
+model Payment {
+  id             String        @id @default(uuid())
+  studentId      String        @map("student_id")
+  membershipId   String?       @map("membership_id")
+  paymentType    PaymentType?  @map("payment_type")
+  paymentDate    DateTime      @map("payment_date") @db.Date
+  amount         Decimal       @db.Decimal(10, 2)
+  paymentMethod  PaymentMethod? @map("payment_method")
+  referenceNumber String?      @map("reference_number")
+  notes          String?
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @default(now()) @updatedAt @map("updated_at")
+
+  // Snapshots (captured at payment creation)
+  studentIdentifierSnapshot String? @map("student_identifier_snapshot")
+  studentNameSnapshot       String? @map("student_name_snapshot")
+  centerIdSnapshot          String? @map("center_id_snapshot")
+  centerNameSnapshot        String? @map("center_name_snapshot")
+  groupIdSnapshot           String? @map("group_id_snapshot")
+  groupNameSnapshot         String? @map("group_name_snapshot")
+
+  // Monthly-specific
+  monthlySubtype  MonthlyPaymentSubtype? @map("monthly_subtype")
+  bankNumber      String?   @map("bank_number")
+  checkNumber     String?   @map("check_number")
+  waiverReason    String?   @map("waiver_reason")
+
+  // Equipment-specific
+  equipmentNotes  String?   @map("equipment_notes")
+
+  // Exam-specific
+  examDate        DateTime? @map("exam_date") @db.Date
+  examCode        String?   @map("exam_code")
+
+  student    Student           @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  membership StudentMembership? @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+  paymentMonths         PaymentMonth[]
+  paymentEquipmentItems PaymentEquipmentItem[]
+
+  @@index([studentId])
+  @@index([paymentDate])
+  @@index([paymentType])
+  @@map("payments")
+}
+
+model PaymentMonth {
+  id        String  @id @default(uuid())
+  paymentId String  @map("payment_id")
+  year      Int
+  month     Int
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@unique([paymentId, year, month])
+  @@index([paymentId])
+  @@index([year, month])
+  @@map("payment_months")
+}
+
+model PaymentEquipmentItem {
+  id                  String   @id @default(uuid())
+  paymentId           String   @map("payment_id")
+  equipmentCode       String   @map("equipment_code")
+  quantity            Int      @default(1)
+  unitAmountSnapshot  Decimal? @map("unit_amount_snapshot") @db.Decimal(10, 2)
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
+  @@index([equipmentCode])
+  @@map("payment_equipment_items")
+}
+
+// ---------------------------------------------------------------------------
+// System Data - Sports Equipment
+// ---------------------------------------------------------------------------
+
+model SportsEquipment {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  description String
+  amount      Decimal  @default(0) @db.Decimal(10, 2)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([code])
+  @@map("sports_equipment")
+}
+
+// ---------------------------------------------------------------------------
+// System Data - Exams / Tests
+// ---------------------------------------------------------------------------
+
+model Exam {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  description String
+  amount      Decimal  @default(0) @db.Decimal(10, 2)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([code])
+  @@map("exams")
+}
+
+// ---------------------------------------------------------------------------
+// Belt Levels
+// ---------------------------------------------------------------------------
+
+model BeltLevel {
+  id          String   @id @default(uuid())
+  name        String
+  orderNumber Int      @unique @map("order_number")
+  description String?
+
+  beltHistory StudentBeltHistory[]
+
+  @@map("belt_levels")
+}
+
+// ---------------------------------------------------------------------------
+// Student Belt History
+// ---------------------------------------------------------------------------
+
+model StudentBeltHistory {
+  id                String   @id @default(uuid())
+  studentId         String   @map("student_id")
+  beltLevelId       String   @map("belt_level_id")
+  promotionDate     DateTime @map("promotion_date") @db.Date
+  certificateNumber String?  @map("certificate_number")
+  notes             String?
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  student   Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  beltLevel BeltLevel @relation(fields: [beltLevelId], references: [id], onDelete: Restrict)
+
+  @@index([studentId])
+  @@index([promotionDate])
+  @@map("student_belt_history")
+}

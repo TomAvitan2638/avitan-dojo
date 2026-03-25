@@ -1,0 +1,38 @@
+declare module "lucide-react" {
+  import type { SVGProps } from "react";
+  export type LucideProps = SVGProps<SVGSVGElement>;
+  type Icon = React.ComponentType<LucideProps>;
+  export const Search: Icon;
+  export const Plus: Icon;
+  export const Eye: Icon;
+  export const Pencil: Icon;
+  export const Building2: Icon;
+  export const User: Icon;
+  export const Banknote: Icon;
+  export const Users: Icon;
+  export const FileText: Icon;
+  export const Loader2: Icon;
+  export const CheckCircle: Icon;
+  export const Phone: Icon;
+  export const Mail: Icon;
+  export const MapPin: Icon;
+  export const ChevronRight: Icon;
+  export const ChevronLeft: Icon;
+  export const Bell: Icon;
+  export const UserCog: Icon;
+  export const Calendar: Icon;
+  export const XIcon: Icon;
+  export const AlertTriangle: Icon;
+  export const Receipt: Icon;
+  export const Cake: Icon;
+  export const AlertCircle: Icon;
+  export const Layers: Icon;
+  export const CreditCard: Icon;
+  export const LayoutDashboard: Icon;
+  export const Award: Icon;
+  export const Settings: Icon;
+  export const Filter: Icon;
+  export const MoreHorizontal: Icon;
+  export const Clock: Icon;
+  export const Trash2: Icon;
+}
