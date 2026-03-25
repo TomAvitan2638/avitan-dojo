@@ -60,7 +60,9 @@ export function LoginForm() {
 
     if (signErr) {
       setLoading(false);
-      setFormError("התחברות נכשלה. בדקו את הפרטים ונסו שוב.");
+      // DEBUG: remove before shipping — surface real Supabase error in prod
+      console.error("signInWithPassword error", signErr);
+      setFormError(signErr.message);
       return;
     }
 
