@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { updateCenter } from "@/server/actions/update-center";
+import { formNativeSelectClassName } from "@/lib/form-field";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
 
@@ -77,7 +78,7 @@ export function CenterEditForm({ center, instructors }: Props) {
               id="instructorId"
               name="instructorId"
               defaultValue={center.instructorId}
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className={formNativeSelectClassName()}
             >
               <option value="">ללא מאמן</option>
               {instructors.map((i) => (

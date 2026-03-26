@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { updateStudent } from "@/server/actions/update-student";
 import { StudentImageUpload } from "@/components/students/student-image-upload";
+import { formNativeSelectClassName } from "@/lib/form-field";
 import { Loader2, CheckCircle } from "lucide-react";
 import Link from "next/link";
 
@@ -210,7 +211,7 @@ export function StudentEditForm({
               name="gender"
               required
               defaultValue={student.gender}
-              className={`flex h-9 w-full rounded-md border px-3 py-1 text-sm text-white shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 ${modalInputClass}`}
+              className={formNativeSelectClassName()}
             >
               <option value="">בחר מין</option>
               <option value="זכר">זכר</option>
@@ -317,7 +318,7 @@ export function StudentEditForm({
               name="centerId"
               required
               defaultValue={student.centerId}
-              className={`flex h-9 w-full rounded-md border px-3 py-1 text-sm text-white shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 ${modalInputClass}`}
+              className={formNativeSelectClassName()}
               onChange={(e) => setSelectedCenterId(e.target.value)}
             >
               <option value="">בחר מרכז</option>
@@ -337,7 +338,7 @@ export function StudentEditForm({
               key={selectedCenterId}
               defaultValue={student.groupId}
               disabled={!selectedCenterId}
-              className={`flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none disabled:opacity-50 ${modalInputClass}`}
+              className={formNativeSelectClassName()}
             >
               <option value="">
                 {selectedCenterId ? "בחר קבוצה" : "בחר מרכז קודם"}
@@ -414,7 +415,7 @@ export function StudentEditForm({
               <select
                 id="beltLevelId"
                 name="beltLevelId"
-                className={`flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none ${modalInputClass}`}
+                className={formNativeSelectClassName()}
                 defaultValue={student.beltLevelId}
               >
                 <option value="">ללא דרגה</option>

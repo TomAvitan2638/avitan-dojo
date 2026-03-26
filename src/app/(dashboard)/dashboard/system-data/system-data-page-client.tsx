@@ -258,7 +258,6 @@ export function SystemDataPageClient({
                     name="description"
                     placeholder="תיאור הפריט"
                     required
-                    className="bg-zinc-800 border-white/10 text-white"
                   />
                 </div>
                 <div className="grid gap-2">
@@ -271,7 +270,6 @@ export function SystemDataPageClient({
                     min="0"
                     placeholder="0"
                     required
-                    className="bg-zinc-800 border-white/10 text-white"
                   />
                 </div>
                 {sportsPhase === "refreshing" && (
@@ -413,7 +411,6 @@ export function SystemDataPageClient({
                     name="description"
                     placeholder="תיאור המבחן"
                     required
-                    className="bg-zinc-800 border-white/10 text-white"
                   />
                 </div>
                 <div className="grid gap-2">
@@ -426,7 +423,6 @@ export function SystemDataPageClient({
                     min="0"
                     placeholder="0"
                     required
-                    className="bg-zinc-800 border-white/10 text-white"
                   />
                 </div>
                 {examPhase === "refreshing" && (
@@ -583,7 +579,7 @@ export function SystemDataPageClient({
                     value={editSports?.code ?? editExam?.code ?? ""}
                     readOnly
                     disabled
-                    className="bg-zinc-800 border-white/10 text-muted-foreground font-mono"
+                    className="font-mono text-muted-foreground opacity-90"
                   />
                 </div>
                 <div className="grid gap-2">
@@ -593,7 +589,6 @@ export function SystemDataPageClient({
                     value={editDescription}
                     onChange={(e) => setEditDescription(e.target.value)}
                     placeholder="תיאור"
-                    className="bg-zinc-800 border-white/10 text-white"
                   />
                 </div>
                 <div className="grid gap-2">
@@ -605,7 +600,6 @@ export function SystemDataPageClient({
                     min="0"
                     value={editAmount}
                     onChange={(e) => setEditAmount(e.target.value)}
-                    className="bg-zinc-800 border-white/10 text-white"
                   />
                 </div>
                 {editError && (

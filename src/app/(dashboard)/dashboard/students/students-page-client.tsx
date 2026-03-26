@@ -29,6 +29,7 @@ import { Plus, Search, Users, Loader2, User, CheckCircle } from "lucide-react";
 import { createStudent } from "@/server/actions/create-student";
 import { getStudentForModal } from "@/server/actions/get-student-for-modal";
 import { StudentImageUpload } from "@/components/students/student-image-upload";
+import { formNativeSelectClassName } from "@/lib/form-field";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -408,17 +409,21 @@ export function StudentsPageClient({
               הוספת תלמיד
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>הוספת תלמיד חדש</DialogTitle>
-              <DialogDescription>הזן את פרטי התלמיד החדש</DialogDescription>
-            </DialogHeader>
+          <DialogContent className="w-[min(92vw,700px)] max-h-[80vh] flex flex-col overflow-hidden">
             <form
               action={formAction}
               encType="multipart/form-data"
-              className="grid gap-4 py-4"
+              className="contents"
             >
-              <StudentImageUpload />
+              <div className="shrink-0 border-b border-border/70 px-6 pb-4 pt-6">
+                <DialogHeader>
+                  <DialogTitle>הוספת תלמיד חדש</DialogTitle>
+                  <DialogDescription>הזן את פרטי התלמיד החדש</DialogDescription>
+                </DialogHeader>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+                <div className="grid gap-4">
+                  <StudentImageUpload />
               <div className="grid gap-2">
                 <Label htmlFor="identifier">ת״ז</Label>
                 <Input
@@ -468,7 +473,7 @@ export function StudentsPageClient({
                   id="gender"
                   name="gender"
                   required
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className={formNativeSelectClassName()}
                 >
                   <option value="">בחר מין</option>
                   <option value="זכר">זכר</option>
@@ -556,7 +561,7 @@ export function StudentsPageClient({
                   id="centerId"
                   name="centerId"
                   required
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className={formNativeSelectClassName()}
                   onChange={(e) => setSelectedCenterId(e.target.value)}
                 >
                   <option value="">בחר מרכז</option>
@@ -575,7 +580,7 @@ export function StudentsPageClient({
                   required
                   key={selectedCenterId}
                   disabled={!selectedCenterId}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                  className={formNativeSelectClassName()}
                 >
                   <option value="">
                     {selectedCenterId ? "בחר קבוצה" : "בחר מרכז קודם"}
@@ -641,7 +646,7 @@ export function StudentsPageClient({
                   <select
                     id="beltLevelId"
                     name="beltLevelId"
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className={formNativeSelectClassName()}
                   >
                     <option value="">ללא דרגה</option>
                     {beltLevels.map((b) => (
@@ -686,42 +691,46 @@ export function StudentsPageClient({
                   אישור רפואי
                 </Label>
               </div>
-              {createPhase === "refreshing" && (
-                <div
-                  className="flex flex-row-reverse items-center gap-2 rounded-md border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm text-blue-600 dark:text-blue-400"
-                  role="status"
-                >
-                  <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
-                  מעדכן נתונים...
                 </div>
-              )}
-              {createPhase === "success" && (
-                <div
-                  className="flex flex-row-reverse items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-600 dark:text-green-400"
-                  role="status"
-                >
-                  <CheckCircle className="h-5 w-5 shrink-0" />
-                  הרשומה נשמרה בהצלחה
-                </div>
-              )}
-              {state?.error && (
-                <p className="text-sm text-destructive" role="alert">
-                  {state.error}
-                </p>
-              )}
-              <div className="flex justify-start gap-2">
-                {createPhase === "idle" && (
-                  <>
-                    <CreateStudentSubmitButton />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setIsAddDialogOpen(false)}
-                    >
-                      ביטול
-                    </Button>
-                  </>
+              </div>
+              <div className="shrink-0 space-y-3 border-t border-border/70 bg-background px-6 py-4">
+                {createPhase === "refreshing" && (
+                  <div
+                    className="flex flex-row-reverse items-center gap-2 rounded-md border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm text-blue-600 dark:text-blue-400"
+                    role="status"
+                  >
+                    <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
+                    מעדכן נתונים...
+                  </div>
                 )}
+                {createPhase === "success" && (
+                  <div
+                    className="flex flex-row-reverse items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-600 dark:text-green-400"
+                    role="status"
+                  >
+                    <CheckCircle className="h-5 w-5 shrink-0" />
+                    הרשומה נשמרה בהצלחה
+                  </div>
+                )}
+                {state?.error && (
+                  <p className="text-sm text-destructive" role="alert">
+                    {state.error}
+                  </p>
+                )}
+                <div className="flex justify-start gap-2">
+                  {createPhase === "idle" && (
+                    <>
+                      <CreateStudentSubmitButton />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsAddDialogOpen(false)}
+                      >
+                        ביטול
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
             </form>
           </DialogContent>

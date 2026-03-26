@@ -43,6 +43,7 @@ import {
   deletePayment,
   type DeletePaymentState,
 } from "@/server/actions/delete-payment";
+import { formNativeSelectClassName } from "@/lib/form-field";
 import {
   Tooltip,
   TooltipContent,
@@ -539,7 +540,7 @@ export function PaymentsPageClient({
                     setExamAmount("");
                     setSelectedExamCode("");
                   }}
-                  className="flex h-9 w-full rounded-md border border-white/10 bg-zinc-800 px-3 py-1 text-white"
+                  className={formNativeSelectClassName()}
                 >
                   <option value="">בחר סוג</option>
                   <option value="MONTHLY">חודשי</option>
@@ -577,7 +578,6 @@ export function PaymentsPageClient({
                       type="date"
                       required
                       defaultValue={todayLocalCalendarIso()}
-                      className="bg-zinc-800 border-white/10 text-white"
                     />
                   </div>
 
@@ -590,7 +590,7 @@ export function PaymentsPageClient({
                           onChange={(e) =>
                             setMonthlySubtype(e.target.value as MonthlyPaymentSubtype | "")
                           }
-                          className="flex h-9 w-full rounded-md border border-white/10 bg-zinc-800 px-3 py-1 text-white"
+                          className={formNativeSelectClassName()}
                         >
                           <option value="">בחר</option>
                           <option value="REGULAR">תשלום רגיל</option>
@@ -612,7 +612,6 @@ export function PaymentsPageClient({
                                   step="0.01"
                                   min="0"
                                   required
-                                  className="bg-zinc-800 border-white/10 text-white"
                                 />
                               </div>
                               <div className="grid gap-2">
@@ -621,7 +620,7 @@ export function PaymentsPageClient({
                                   id="paymentMethod"
                                   name="paymentMethod"
                                   required={monthlySubtype === "REGULAR"}
-                                  className="flex h-9 w-full rounded-md border border-white/10 bg-zinc-800 px-3 py-1 text-white"
+                                  className={formNativeSelectClassName()}
                                 >
                                   <option value="">בחר</option>
                                   <option value="bit">ביט</option>
@@ -644,7 +643,6 @@ export function PaymentsPageClient({
                                   step="0.01"
                                   min="0"
                                   required
-                                  className="bg-zinc-800 border-white/10 text-white"
                                 />
                               </div>
                               <div className="grid gap-2">
@@ -654,7 +652,6 @@ export function PaymentsPageClient({
                                   name="bankNumber"
                                   placeholder="מספר בנק"
                                   required
-                                  className="bg-zinc-800 border-white/10 text-white"
                                 />
                               </div>
                               <div className="grid gap-2">
@@ -664,7 +661,6 @@ export function PaymentsPageClient({
                                   name="checkNumber"
                                   placeholder="מספר צ׳ק"
                                   required
-                                  className="bg-zinc-800 border-white/10 text-white"
                                 />
                               </div>
                             </>
@@ -679,7 +675,6 @@ export function PaymentsPageClient({
                                   id="waiverReason"
                                   name="waiverReason"
                                   placeholder="למשל: מילואים, הקפאה..."
-                                  className="bg-zinc-800 border-white/10 text-white"
                                 />
                               </div>
                             </>
@@ -705,7 +700,9 @@ export function PaymentsPageClient({
                                       onChange={(e) =>
                                         updateMonth(idx, parseInt(e.target.value), m.month)
                                       }
-                                      className="h-9 rounded border border-white/10 bg-zinc-800 px-2 text-white"
+                                      className={formNativeSelectClassName(
+                                        "h-9 w-auto shrink-0 px-2"
+                                      )}
                                     >
                                       {[currentYear - 1, currentYear, currentYear + 1].map((y) => (
                                         <option
@@ -722,7 +719,9 @@ export function PaymentsPageClient({
                                       onChange={(e) =>
                                         updateMonth(idx, m.year, parseInt(e.target.value))
                                       }
-                                      className="h-9 flex-1 rounded border border-white/10 bg-zinc-800 px-2 text-white"
+                                      className={formNativeSelectClassName(
+                                        "min-w-0 flex-1 px-2"
+                                      )}
                                     >
                                       {MONTHS_HE.map((name, i) => (
                                         <option
@@ -772,7 +771,9 @@ export function PaymentsPageClient({
                                   onChange={(e) =>
                                     updateEquipmentRow(idx, e.target.value, r.quantity)
                                   }
-                                  className="h-9 flex-1 min-w-0 rounded border border-white/10 bg-zinc-800 px-2 text-white"
+                                  className={formNativeSelectClassName(
+                                    "min-w-0 flex-1 px-2"
+                                  )}
                                 >
                                   <option value="">בחר פריט</option>
                                   {sportsEquipment.map((e) => (
@@ -791,7 +792,7 @@ export function PaymentsPageClient({
                                   onChange={(e) =>
                                     updateEquipmentRow(idx, r.code, parseInt(e.target.value) || 1)
                                   }
-                                  className="w-16 bg-zinc-800 border-white/10 text-white"
+                                  className="w-16"
                                 />
                                 <span className="text-white font-medium whitespace-nowrap">
                                   = ₪{lineTotal.toFixed(2)}
@@ -826,7 +827,6 @@ export function PaymentsPageClient({
                             value={equipmentAmount}
                             onChange={(e) => setEquipmentAmount(e.target.value)}
                             required
-                            className="bg-zinc-800 border-white/10 text-white"
                           />
                         </div>
                         <div className="grid gap-2">
@@ -834,7 +834,6 @@ export function PaymentsPageClient({
                           <Textarea
                             id="equipmentNotes"
                             name="equipmentNotes"
-                            className="bg-zinc-800 border-white/10 text-white"
                           />
                         </div>
                       </div>
@@ -855,7 +854,7 @@ export function PaymentsPageClient({
                             setExamAmount(code ? getExamAmount(code).toFixed(2) : "");
                           }}
                           required
-                          className="flex h-9 w-full rounded-md border border-white/10 bg-zinc-800 px-3 py-1 text-white"
+                          className={formNativeSelectClassName()}
                         >
                           <option value="">בחר סוג</option>
                           {exams.map((e) => (
@@ -876,7 +875,6 @@ export function PaymentsPageClient({
                           value={examAmount}
                           onChange={(e) => setExamAmount(e.target.value)}
                           required
-                          className="bg-zinc-800 border-white/10 text-white"
                         />
                       </div>
                       <div className="grid gap-2">
@@ -887,7 +885,6 @@ export function PaymentsPageClient({
                           type="date"
                           required
                           defaultValue={todayLocalCalendarIso()}
-                          className="bg-zinc-800 border-white/10 text-white"
                         />
                       </div>
                     </>
@@ -962,7 +959,7 @@ export function PaymentsPageClient({
             placeholder="חיפוש (ת״ז, שם, מרכז, קבוצה, סוג)"
             defaultValue={initialSearch}
             key={initialSearch}
-            className="pr-9 bg-zinc-800 border-white/10 text-white placeholder:text-muted-foreground"
+            className="pr-9"
           />
           <button type="submit" className="sr-only">
             חפש
@@ -981,7 +978,7 @@ export function PaymentsPageClient({
                 router.push(`/dashboard/payments?${qs.toString()}`)
               );
             }}
-            className="h-9 rounded-md border border-white/10 bg-zinc-800 px-3 py-1 text-white text-sm"
+            className={formNativeSelectClassName()}
           >
             <option value="">סוג תשלום</option>
             <option value="MONTHLY">חודשי</option>
@@ -1002,7 +999,7 @@ export function PaymentsPageClient({
                   router.push(`/dashboard/payments?${qs.toString()}`)
                 );
               }}
-              className="h-9 rounded-md border border-white/10 bg-zinc-800 px-3 py-1 text-white text-sm"
+              className={formNativeSelectClassName()}
             >
               <option value="">סוג חודשי</option>
               <option value="REGULAR">תשלום רגיל</option>
@@ -1605,7 +1602,6 @@ function EditPaymentDialog({
               type="date"
               required
               defaultValue={payment.paymentDateIso}
-              className="bg-zinc-800 border-white/10 text-white"
             />
           </div>
           <div className="grid gap-2">
@@ -1626,7 +1622,7 @@ function EditPaymentDialog({
                   onChange={(e) =>
                     setEditMonthlySubtype(e.target.value as MonthlyPaymentSubtype)
                   }
-                  className="flex h-9 w-full rounded-md border border-white/10 bg-zinc-800 px-3 py-1 text-white"
+                  className={formNativeSelectClassName()}
                 >
                   <option value="REGULAR">תשלום רגיל</option>
                   <option value="CHECK">המחאה</option>
@@ -1644,7 +1640,6 @@ function EditPaymentDialog({
                     min="0"
                     defaultValue={payment.amount.toFixed(2)}
                     required
-                    className="bg-zinc-800 border-white/10 text-white"
                   />
                 </div>
               )}
@@ -1656,7 +1651,7 @@ function EditPaymentDialog({
                     name="paymentMethod"
                     defaultValue={payment.paymentMethod ?? ""}
                     required
-                    className="flex h-9 w-full rounded-md border border-white/10 bg-zinc-800 px-3 py-1 text-white"
+                    className={formNativeSelectClassName()}
                   >
                     <option value="bit">ביט</option>
                     <option value="paybox">פייבוקס</option>
@@ -1673,7 +1668,6 @@ function EditPaymentDialog({
                       id="edit-bankNumber"
                       name="bankNumber"
                       defaultValue={payment.bankNumber ?? ""}
-                      className="bg-zinc-800 border-white/10 text-white"
                     />
                   </div>
                   <div className="grid gap-2">
@@ -1682,7 +1676,6 @@ function EditPaymentDialog({
                       id="edit-checkNumber"
                       name="checkNumber"
                       defaultValue={payment.checkNumber ?? ""}
-                      className="bg-zinc-800 border-white/10 text-white"
                     />
                   </div>
                 </>
@@ -1696,7 +1689,6 @@ function EditPaymentDialog({
                       id="edit-waiverReason"
                       name="waiverReason"
                       defaultValue={payment.waiverReason ?? ""}
-                      className="bg-zinc-800 border-white/10 text-white"
                     />
                   </div>
                 </>
@@ -1725,7 +1717,9 @@ function EditPaymentDialog({
                               )
                             )
                           }
-                          className="h-9 rounded border border-white/10 bg-zinc-800 px-2 text-white"
+                          className={formNativeSelectClassName(
+                            "h-9 w-auto shrink-0 px-2"
+                          )}
                         >
                           {[currentYear - 1, currentYear, currentYear + 1].map((y) => (
                             <option key={y} value={y}>
@@ -1744,7 +1738,9 @@ function EditPaymentDialog({
                               )
                             )
                           }
-                          className="h-9 flex-1 rounded border border-white/10 bg-zinc-800 px-2 text-white"
+                          className={formNativeSelectClassName(
+                            "min-w-0 flex-1 px-2"
+                          )}
                         >
                           {MONTHS_HE.map((name, i) => (
                             <option key={i} value={i + 1}>
@@ -1807,7 +1803,9 @@ function EditPaymentDialog({
                             )
                           )
                         }
-                        className="h-9 flex-1 min-w-0 rounded border border-white/10 bg-zinc-800 px-2 text-white"
+                        className={formNativeSelectClassName(
+                          "min-w-0 flex-1 px-2"
+                        )}
                       >
                         <option value="">בחר פריט</option>
                         {sportsEquipment.map((e) => (
@@ -1832,7 +1830,7 @@ function EditPaymentDialog({
                             )
                           )
                         }
-                        className="w-16 bg-zinc-800 border-white/10 text-white"
+                        className="w-16"
                       />
                       <Button
                         type="button"
@@ -1861,7 +1859,6 @@ function EditPaymentDialog({
                     value={editEquipmentAmount}
                     onChange={(e) => setEditEquipmentAmount(e.target.value)}
                     required
-                    className="bg-zinc-800 border-white/10 text-white"
                   />
                   {editEquipmentRows.some((r) => r.code) && (
                     <p className="text-sm text-muted-foreground">
@@ -1875,7 +1872,6 @@ function EditPaymentDialog({
                     id="edit-equipmentNotes"
                     name="equipmentNotes"
                     defaultValue={payment.equipmentNotes ?? ""}
-                    className="bg-zinc-800 border-white/10 text-white"
                   />
                 </div>
                 <input
@@ -1901,7 +1897,7 @@ function EditPaymentDialog({
                     setEditExamAmount(code ? getExamAmount(code).toFixed(2) : "");
                   }}
                   required
-                  className="flex h-9 w-full rounded-md border border-white/10 bg-zinc-800 px-3 py-1 text-white"
+                  className={formNativeSelectClassName()}
                 >
                   <option value="">בחר סוג</option>
                   {exams.map((e) => (
@@ -1919,7 +1915,6 @@ function EditPaymentDialog({
                   type="date"
                   required
                   defaultValue={payment.examDateIso ?? ""}
-                  className="bg-zinc-800 border-white/10 text-white"
                 />
               </div>
               <div className="grid gap-2">
@@ -1933,7 +1928,6 @@ function EditPaymentDialog({
                   value={editExamAmount}
                   onChange={(e) => setEditExamAmount(e.target.value)}
                   required
-                  className="bg-zinc-800 border-white/10 text-white"
                 />
               </div>
             </>

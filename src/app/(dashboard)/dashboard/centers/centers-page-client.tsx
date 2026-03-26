@@ -33,6 +33,10 @@ import {
 import Link from "next/link";
 import { createCenter } from "@/server/actions/create-center";
 import { deleteCenter } from "@/server/actions/delete-center";
+import {
+  createRecordDialogClassName,
+  formNativeSelectClassName,
+} from "@/lib/form-field";
 
 type CenterRow = {
   id: string;
@@ -186,84 +190,104 @@ export function CentersPageClient({ centers, instructors }: Props) {
               הוספת מרכז
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>הוספת מרכז חדש</DialogTitle>
-              <DialogDescription>הזן את פרטי המרכז החדש</DialogDescription>
-            </DialogHeader>
-            <form action={formAction} className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="name">שם המרכז</Label>
-                <Input id="name" name="name" placeholder="הזן שם מרכז" required />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="instructorId">מאמן אחראי</Label>
-                <select
-                  id="instructorId"
-                  name="instructorId"
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <option value="">ללא מאמן</option>
-                  {instructors.map((i) => (
-                    <option key={i.id} value={i.id}>
-                      {i.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="price">מחיר חודשי</Label>
-                <Input
-                  id="price"
-                  name="price"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="₪000"
-                  dir="ltr"
-                  className="text-left"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="notes">הערות</Label>
-                <Textarea id="notes" name="notes" placeholder="הערות נוספות" />
-              </div>
-              {createPhase === "refreshing" && (
-                <div
-                  className="flex items-center gap-2 rounded-md border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm text-blue-600 dark:text-blue-400"
-                  role="status"
-                >
-                  <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
-                  מעדכן נתונים...
-                </div>
-              )}
-              {createPhase === "success" && (
-                <div
-                  className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-600 dark:text-green-400"
-                  role="status"
-                >
-                  <CheckCircle className="h-5 w-5 shrink-0" />
-                  הרשומה נשמרה בהצלחה
-                </div>
-              )}
-              {state?.error && (
-                <p className="text-sm text-destructive" role="alert">
-                  {state.error}
-                </p>
-              )}
-              <div className="flex justify-start gap-2">
-                {createPhase === "idle" && (
-                  <>
-                    <CreateCenterSubmitButton />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setIsAddDialogOpen(false)}
+          <DialogContent className={createRecordDialogClassName("md")}>
+            <div className="shrink-0 border-b border-border/70 px-6 pb-4 pt-6">
+              <DialogHeader>
+                <DialogTitle>הוספת מרכז חדש</DialogTitle>
+                <DialogDescription>הזן את פרטי המרכז החדש</DialogDescription>
+              </DialogHeader>
+            </div>
+            <form
+              action={formAction}
+              className="flex min-h-0 flex-1 flex-col"
+            >
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-4">
+                <div className="grid gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="name">שם המרכז</Label>
+                    <Input
+                      id="name"
+                      name="name"
+                      placeholder="הזן שם מרכז"
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="instructorId">מאמן אחראי</Label>
+                    <select
+                      id="instructorId"
+                      name="instructorId"
+                      className={formNativeSelectClassName()}
                     >
-                      ביטול
-                    </Button>
-                  </>
+                      <option value="">ללא מאמן</option>
+                      {instructors.map((i) => (
+                        <option key={i.id} value={i.id}>
+                          {i.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="price">מחיר חודשי</Label>
+                    <Input
+                      id="price"
+                      name="price"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="₪000"
+                      dir="ltr"
+                      className="text-left"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="notes">הערות</Label>
+                    <Textarea
+                      id="notes"
+                      name="notes"
+                      placeholder="הערות נוספות"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="shrink-0 space-y-3 border-t border-border/70 bg-background px-6 py-4">
+                {createPhase === "refreshing" && (
+                  <div
+                    className="flex items-center gap-2 rounded-md border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm text-blue-600 dark:text-blue-400"
+                    role="status"
+                  >
+                    <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
+                    מעדכן נתונים...
+                  </div>
                 )}
+                {createPhase === "success" && (
+                  <div
+                    className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-600 dark:text-green-400"
+                    role="status"
+                  >
+                    <CheckCircle className="h-5 w-5 shrink-0" />
+                    הרשומה נשמרה בהצלחה
+                  </div>
+                )}
+                {state?.error && (
+                  <p className="text-sm text-destructive" role="alert">
+                    {state.error}
+                  </p>
+                )}
+                <div className="flex justify-start gap-2">
+                  {createPhase === "idle" && (
+                    <>
+                      <CreateCenterSubmitButton />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsAddDialogOpen(false)}
+                      >
+                        ביטול
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
             </form>
           </DialogContent>

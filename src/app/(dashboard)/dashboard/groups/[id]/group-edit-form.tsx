@@ -10,6 +10,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { updateGroup } from "@/server/actions/update-group";
 import Link from "next/link";
 import { TRAINING_DAYS_ORDER, TRAINING_DAY_LABELS } from "@/lib/training-days";
+import {
+  formNativeSelectClassName,
+  formNativeSelectCompactClassName,
+} from "@/lib/form-field";
 import type { TrainingDay } from "@prisma/client";
 import { Plus, Trash2, Loader2 } from "lucide-react";
 
@@ -114,7 +118,7 @@ export function GroupEditForm({ group, centers, instructors }: Props) {
               name="centerId"
               required
               defaultValue={group.centerId}
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className={formNativeSelectClassName()}
             >
               {centers.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -130,7 +134,7 @@ export function GroupEditForm({ group, centers, instructors }: Props) {
               name="instructorId"
               required
               defaultValue={group.instructorId}
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className={formNativeSelectClassName()}
             >
               {instructors.map((i) => (
                 <option key={i.id} value={i.id}>
@@ -151,14 +155,14 @@ export function GroupEditForm({ group, centers, instructors }: Props) {
               {schedules.map((s, idx) => (
                 <div
                   key={idx}
-                  className="flex flex-wrap items-center gap-2 rounded-md border border-input p-2"
+                  className="flex flex-wrap items-center gap-2 rounded-md border border-input/80 bg-popover/30 p-2"
                 >
                   <select
                     value={s.trainingDay}
                     onChange={(e) =>
                       updateSchedule(idx, "trainingDay", e.target.value)
                     }
-                    className="h-8 flex-1 min-w-[80px] rounded border border-input bg-transparent px-2 text-sm"
+                    className={formNativeSelectCompactClassName()}
                   >
                     {TRAINING_DAYS_ORDER.map((d) => (
                       <option key={d} value={d}>

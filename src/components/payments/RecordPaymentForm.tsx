@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
+import { formNativeSelectClassName } from "@/lib/form-field";
 
 function RecordPaymentSubmitButton() {
   const { pending } = useFormStatus();
@@ -84,7 +85,7 @@ export function RecordPaymentForm({
           id="paymentMethod"
           name="paymentMethod"
           required
-          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className={formNativeSelectClassName()}
         >
           {PAYMENT_METHODS_FOR_REGULAR.map((method) => (
             <option key={method} value={method}>
