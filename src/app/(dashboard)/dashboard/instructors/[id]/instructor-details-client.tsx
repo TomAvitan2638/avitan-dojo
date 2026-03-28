@@ -46,12 +46,15 @@ type Props = {
   instructor: InstructorData;
   groups: GroupInfo[];
   centers: CenterInfo[];
+  /** When set, "עריכה" uses this callback instead of navigating to the edit route (e.g. modal). */
+  onEditClick?: () => void;
 };
 
 export function InstructorDetailsClient({
   instructor,
   groups,
   centers,
+  onEditClick,
 }: Props) {
   return (
     <div className="space-y-6">
@@ -79,19 +82,26 @@ export function InstructorDetailsClient({
               className={
                 instructor.isActive
                   ? "mt-2 border-emerald-500/20 bg-emerald-500/10 text-emerald-500"
-                  : "border-zinc-500/20 bg-zinc-500/10 text-zinc-400"
+                  : "border-border bg-muted/80 text-muted-foreground"
               }
             >
               {instructor.isActive ? "פעיל" : "לא פעיל"}
             </Badge>
           </div>
         </div>
-        <Button variant="outline" size="sm" asChild>
-          <Link href={`/dashboard/instructors/${instructor.id}/edit`}>
+        {onEditClick ? (
+          <Button variant="outline" size="sm" type="button" onClick={onEditClick}>
             <Pencil className="ml-1 h-4 w-4" />
             עריכה
-          </Link>
-        </Button>
+          </Button>
+        ) : (
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/dashboard/instructors/${instructor.id}/edit`}>
+              <Pencil className="ml-1 h-4 w-4" />
+              עריכה
+            </Link>
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">

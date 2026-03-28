@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { AuthCard } from "@/components/auth/AuthCard";
+import { cn } from "@/lib/utils";
 import { AuthInput } from "@/components/auth/AuthInput";
 import { AuthButton } from "@/components/auth/AuthButton";
 import { isValidLoginEmail, normalizeLoginEmail } from "@/lib/email";
@@ -13,6 +14,13 @@ import {
   persistRememberedEmail,
   readRememberedEmail,
 } from "@/lib/auth-local-storage";
+
+/** Black outline via stacked text-shadows — readable red on busy bg (login only). */
+const LOGIN_TITLE_OUTLINE =
+  "[text-shadow:-1px_-1px_0_#0a0a0a,1px_-1px_0_#0a0a0a,-1px_1px_0_#0a0a0a,1px_1px_0_#0a0a0a,-2px_0_0_#0a0a0a,2px_0_0_#0a0a0a,0_-2px_0_#0a0a0a,0_2px_0_#0a0a0a,0_0_8px_rgba(0,0,0,0.45)]";
+
+const LOGIN_SUBTITLE_OUTLINE =
+  "[text-shadow:-1px_-1px_0_#0a0a0a,1px_-1px_0_#0a0a0a,-1px_1px_0_#0a0a0a,1px_1px_0_#0a0a0a,0_-1px_0_#0a0a0a,0_1px_0_#0a0a0a,-1px_0_0_#0a0a0a,1px_0_0_#0a0a0a,0_0_6px_rgba(0,0,0,0.4)]";
 
 export function LoginForm() {
   const router = useRouter();
@@ -75,10 +83,18 @@ export function LoginForm() {
   }
 
   return (
-    <AuthCard title="אביטן דוג׳ו" subtitle="התחברות למערכת הניהול">
+    <AuthCard
+      title="אביטן דוג׳ו"
+      subtitle="התחברות למערכת הניהול"
+      titleClassName={cn(
+        "text-5xl text-dojo-red sm:text-6xl",
+        LOGIN_TITLE_OUTLINE
+      )}
+      subtitleClassName={cn("text-dojo-red", LOGIN_SUBTITLE_OUTLINE)}
+    >
       {resetSuccess ? (
         <div
-          className="mb-6 rounded-xl border border-emerald-500/40 bg-emerald-950/40 px-4 py-3 text-center text-sm text-emerald-100 transition-opacity duration-300"
+          className="mb-6 rounded-xl border border-emerald-600/35 bg-emerald-50 px-4 py-3 text-center text-base text-emerald-900 transition-opacity duration-300"
           role="status"
         >
           הסיסמה עודכנה בהצלחה. ניתן להתחבר.
@@ -114,7 +130,7 @@ export function LoginForm() {
 
         {formError ? (
           <p
-            className="rounded-lg bg-red-950/50 px-3 py-2 text-center text-sm text-red-200"
+            className="rounded-lg bg-destructive/10 px-3 py-2 text-center text-base text-destructive"
             role="alert"
           >
             {formError}
@@ -128,7 +144,7 @@ export function LoginForm() {
         <div className="text-center">
           <Link
             href="/forgot-password"
-            className="text-sm text-white/80 underline-offset-4 transition-colors hover:text-white hover:underline"
+            className="text-base text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
           >
             שכחתי סיסמה
           </Link>

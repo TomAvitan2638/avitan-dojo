@@ -49,7 +49,7 @@ export default function ForgotPasswordPage() {
     <AuthCard title="איפוס סיסמה" subtitle="נשלח קישור לאיפוס למייל המקושר לחשבון">
       {done ? (
         <p
-          className="rounded-xl border border-white/15 bg-white/5 px-4 py-4 text-center text-sm leading-relaxed text-white/90"
+          className="rounded-xl border border-border bg-muted/50 px-4 py-4 text-center text-base leading-relaxed text-foreground"
           role="status"
         >
           {GENERIC_SUCCESS}
@@ -74,7 +74,7 @@ export default function ForgotPasswordPage() {
           <div className="text-center">
             <Link
               href="/login"
-              className="text-sm text-white/80 underline-offset-4 transition-colors hover:text-white hover:underline"
+              className="text-base text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
             >
               חזרה להתחברות
             </Link>

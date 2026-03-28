@@ -61,10 +61,10 @@ export function Sidebar({ pendingHref = null, onNavClick }: SidebarProps) {
             </div>
             {!collapsed && (
               <div className="flex flex-col">
-                <span className="text-sm font-bold text-foreground">
+                <span className="text-base font-bold text-foreground">
                   Avitan Dojo
                 </span>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-sm text-muted-foreground">
                   ניהול מכון
                 </span>
               </div>
@@ -87,7 +87,7 @@ export function Sidebar({ pendingHref = null, onNavClick }: SidebarProps) {
                 href={item.href}
                 onClick={() => onNavClick?.(item.href)}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium transition-all duration-200",
                   isActive
                     ? "bg-dojo-red text-primary-foreground shadow-lg shadow-dojo-red/20"
                     : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"

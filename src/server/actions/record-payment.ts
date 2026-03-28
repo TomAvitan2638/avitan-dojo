@@ -123,5 +123,5 @@ export async function recordPayment(
 
   revalidatePath("/dashboard/payments");
   revalidatePath("/dashboard");
-  redirect("/dashboard");
+  redirect("/dashboard?dataFresh=1");
 }

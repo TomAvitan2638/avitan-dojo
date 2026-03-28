@@ -1,9 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { useTransition } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,54 +30,83 @@ import {
   Loader2,
   CheckCircle,
 } from "lucide-react";
-import Link from "next/link";
 import { createInstructor } from "@/server/actions/create-instructor";
+import { InstructorDetailsModal } from "@/components/instructors/instructor-details-modal";
 import { deleteInstructor } from "@/server/actions/delete-instructor";
 import { InstructorImageUpload } from "@/components/instructors/instructor-image-upload";
-
-type InstructorRow = {
-  id: string;
-  name: string;
-  phone: string;
-  email: string;
-  city: string;
-  photoUrl: string | null;
-  isActive: boolean;
-  groupsCount: number;
-};
+import {
+  RecordDialogBodyLock,
+  RecordDialogCancelButton,
+  RecordDialogPrimarySubmitButton,
+  RecordDialogSaveTailBanners,
+  recordDialogBlockDismiss,
+  useRecordDialogPostSavePhase,
+  useWrappedFormState,
+} from "@/components/record-dialog/record-dialog-save-ux";
+import { useInstructorsPageQuery } from "@/hooks/use-instructors-page-query";
+import type { InstructorsPageQueryScope } from "@/types/instructors-page";
+import { invalidateInstructorsPageQueries } from "@/lib/instructors-page-query";
+import { notifyDataWrite } from "@/lib/data-write-bus";
 
 type Props = {
-  instructors: InstructorRow[];
+  queryScope: InstructorsPageQueryScope;
 };
 
-function CreateInstructorSubmitButton() {
-  const { pending } = useFormStatus();
+function InstructorsGridSkeleton() {
   return (
-    <Button
-      type="submit"
-      className="bg-dojo-red hover:bg-dojo-red/90"
-      disabled={pending}
+    <div
+      className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+      role="status"
+      aria-busy="true"
+      aria-label="טוען רשימת מאמנים"
     >
-      {pending ? (
-        <>
-          <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-          שומר...
-        </>
-      ) : (
-        "שמירה"
-      )}
-    </Button>
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <Card key={i} className="border-border/50 bg-card overflow-hidden">
+          <CardContent className="p-6 space-y-4">
+            <div className="mx-auto h-24 w-24 animate-pulse rounded-full bg-muted/40" />
+            <div className="mx-auto h-6 w-32 animate-pulse rounded bg-muted/40" />
+            <div className="space-y-2">
+              <div className="h-4 w-full animate-pulse rounded bg-muted/30" />
+              <div className="h-4 w-full animate-pulse rounded bg-muted/30" />
+              <div className="h-4 w-2/3 animate-pulse rounded bg-muted/30" />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <div className="h-9 flex-1 animate-pulse rounded-md bg-muted/30" />
+              <div className="h-9 flex-1 animate-pulse rounded-md bg-muted/30" />
+              <div className="h-9 w-9 shrink-0 animate-pulse rounded-md bg-muted/30" />
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
   );
 }
 
-export function InstructorsPageClient({ instructors }: Props) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+export function InstructorsPageClient({ queryScope }: Props) {
+  const queryClient = useQueryClient();
+  const {
+    data,
+    isError,
+    error,
+    refetch,
+    isPending,
+  } = useInstructorsPageQuery({ scope: queryScope });
+
+  const syncInstructorsCache = useCallback(async () => {
+    await invalidateInstructorsPageQueries(queryClient);
+  }, [queryClient]);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [state, formAction] = useFormState(createInstructor, null);
   const createSuccessHandledRef = useRef(false);
-  const [createPhase, setCreatePhase] = useState<"idle" | "refreshing" | "success">("idle");
+  const { state, formAction, submitBusy } = useWrappedFormState(createInstructor, null);
+  const { tailPhase: createPhase } = useRecordDialogPostSavePhase({
+    success: state?.success,
+    isOpen: isAddDialogOpen,
+    handledRef: createSuccessHandledRef,
+    onAutoClose: () => setIsAddDialogOpen(false),
+    syncOnSuccess: syncInstructorsCache,
+  });
   const [deleteDialogInstructor, setDeleteDialogInstructor] = useState<{
     id: string;
     name: string;
@@ -89,33 +116,17 @@ export function InstructorsPageClient({ instructors }: Props) {
     error?: string;
   }>({});
   const [deletePhase, setDeletePhase] = useState<"idle" | "refreshing" | "success">("idle");
+  const [detailModalInstructorId, setDetailModalInstructorId] = useState<
+    string | null
+  >(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [detailModalEdit, setDetailModalEdit] = useState(false);
 
-  useEffect(() => {
-    if (state?.success && isAddDialogOpen && !createSuccessHandledRef.current) {
-      createSuccessHandledRef.current = true;
-      setCreatePhase("refreshing");
-      startTransition(() => router.refresh());
-    }
-  }, [state?.success, isAddDialogOpen, router]);
-
-  useEffect(() => {
-    if (createPhase === "refreshing" && !isPending) setCreatePhase("success");
-  }, [createPhase, isPending]);
-
-  useEffect(() => {
-    if (createPhase === "success") {
-      const t = setTimeout(() => {
-        setIsAddDialogOpen(false);
-        setCreatePhase("idle");
-        createSuccessHandledRef.current = false;
-      }, 1200);
-      return () => clearTimeout(t);
-    }
-  }, [createPhase]);
-
-  useEffect(() => {
-    if (deletePhase === "refreshing" && !isPending) setDeletePhase("success");
-  }, [deletePhase, isPending]);
+  const openInstructorModal = (id: string, edit = false) => {
+    setDetailModalEdit(edit);
+    setDetailModalInstructorId(id);
+    setDetailModalOpen(true);
+  };
 
   useEffect(() => {
     if (deletePhase === "success") {
@@ -134,7 +145,12 @@ export function InstructorsPageClient({ instructors }: Props) {
     setDeleteState((prev) => ({ ...prev, pending: false }));
     if (result.success) {
       setDeletePhase("refreshing");
-      startTransition(() => router.refresh());
+      try {
+        await invalidateInstructorsPageQueries(queryClient);
+        notifyDataWrite();
+      } finally {
+        setDeletePhase("success");
+      }
     } else {
       setDeleteState((prev) => ({ ...prev, error: result.error }));
     }
@@ -149,12 +165,75 @@ export function InstructorsPageClient({ instructors }: Props) {
     }
   };
 
-  const filteredInstructors = instructors.filter(
-    (instructor) =>
-      instructor.name.includes(searchQuery) ||
-      instructor.city.includes(searchQuery) ||
-      instructor.email.includes(searchQuery)
+  const instructors = data?.instructors ?? [];
+
+  const filteredInstructors = useMemo(
+    () =>
+      instructors.filter(
+        (instructor) =>
+          instructor.name.includes(searchQuery) ||
+          instructor.city.includes(searchQuery) ||
+          instructor.email.includes(searchQuery)
+      ),
+    [instructors, searchQuery]
   );
+
+  const loadingWithoutData = isPending && !data;
+
+  if (isError && !data) {
+    return (
+      <>
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative flex-1 sm:max-w-xs">
+            <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              disabled
+              placeholder="חיפוש מאמן..."
+              className="bg-secondary pr-10"
+            />
+          </div>
+          <Button type="button" disabled className="bg-dojo-red/50">
+            <Plus className="ml-2 h-4 w-4" />
+            הוספת מאמן
+          </Button>
+        </div>
+        <Card className="border-destructive/30 bg-card">
+          <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
+            <p className="text-sm text-destructive" role="alert">
+              {error instanceof Error ? error.message : "שגיאה בטעינת המאמנים"}
+            </p>
+            <Button type="button" variant="outline" onClick={() => refetch()}>
+              נסה שוב
+            </Button>
+          </CardContent>
+        </Card>
+      </>
+    );
+  }
+
+  if (loadingWithoutData) {
+    return (
+      <>
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative flex-1 sm:max-w-xs">
+            <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              disabled
+              placeholder="חיפוש מאמן..."
+              className="bg-secondary pr-10"
+            />
+          </div>
+          <Button type="button" disabled className="bg-dojo-red/50">
+            <Plus className="ml-2 h-4 w-4" />
+            הוספת מאמן
+          </Button>
+        </div>
+        <InstructorsGridSkeleton />
+      </>
+    );
+  }
 
   return (
     <>
@@ -171,12 +250,8 @@ export function InstructorsPageClient({ instructors }: Props) {
         <Dialog
           open={isAddDialogOpen}
           onOpenChange={(open) => {
-            if (!open && createPhase === "refreshing") return;
+            if (!open && recordDialogBlockDismiss(createPhase, submitBusy)) return;
             setIsAddDialogOpen(open);
-            if (!open) {
-              setCreatePhase("idle");
-              createSuccessHandledRef.current = false;
-            }
           }}
         >
           <DialogTrigger asChild>
@@ -198,6 +273,7 @@ export function InstructorsPageClient({ instructors }: Props) {
                 </DialogHeader>
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+                <RecordDialogBodyLock tailPhase={createPhase} className="min-h-0">
                 <div className="grid gap-4">
                   <InstructorImageUpload />
                   <div className="grid grid-cols-2 gap-4">
@@ -264,26 +340,10 @@ export function InstructorsPageClient({ instructors }: Props) {
                     <Input id="notes" name="notes" placeholder="הערות" />
                   </div>
                 </div>
+                </RecordDialogBodyLock>
               </div>
               <div className="shrink-0 space-y-3 border-t border-border/70 bg-background px-6 py-4">
-                {createPhase === "refreshing" && (
-                  <div
-                    className="flex items-center gap-2 rounded-md border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm text-blue-600 dark:text-blue-400"
-                    role="status"
-                  >
-                    <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
-                    מעדכן נתונים...
-                  </div>
-                )}
-                {createPhase === "success" && (
-                  <div
-                    className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-600 dark:text-green-400"
-                    role="status"
-                  >
-                    <CheckCircle className="h-5 w-5 shrink-0" />
-                    הרשומה נשמרה בהצלחה
-                  </div>
-                )}
+                <RecordDialogSaveTailBanners phase={createPhase} />
                 {state?.error && (
                   <p className="text-sm text-destructive" role="alert">
                     {state.error}
@@ -292,14 +352,10 @@ export function InstructorsPageClient({ instructors }: Props) {
                 <div className="flex justify-start gap-2">
                   {createPhase === "idle" && (
                     <>
-                      <CreateInstructorSubmitButton />
-                      <Button
-                        type="button"
-                        variant="outline"
+                      <RecordDialogPrimarySubmitButton />
+                      <RecordDialogCancelButton
                         onClick={() => setIsAddDialogOpen(false)}
-                      >
-                        ביטול
-                      </Button>
+                      />
                     </>
                   )}
                 </div>
@@ -356,7 +412,7 @@ export function InstructorsPageClient({ instructors }: Props) {
                       className={
                         instructor.isActive
                           ? "mt-2 border-emerald-500/20 bg-emerald-500/10 text-emerald-500"
-                          : "mt-2 border-zinc-500/20 bg-zinc-500/10 text-zinc-400"
+                          : "mt-2 border-border bg-muted/80 text-muted-foreground"
                       }
                     >
                       {instructor.isActive ? "פעיל" : "לא פעיל"}
@@ -394,30 +450,22 @@ export function InstructorsPageClient({ instructors }: Props) {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1"
-                      asChild
+                      className="flex flex-1 items-center justify-center"
+                      type="button"
+                      onClick={() => openInstructorModal(instructor.id)}
                     >
-                      <Link
-                        href={`/dashboard/instructors/${instructor.id}`}
-                        className="flex items-center justify-center"
-                      >
-                        <Eye className="ml-1 h-4 w-4" />
-                        צפייה
-                      </Link>
+                      <Eye className="ml-1 h-4 w-4" />
+                      צפייה
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1"
-                      asChild
+                      className="flex flex-1 items-center justify-center"
+                      type="button"
+                      onClick={() => openInstructorModal(instructor.id, true)}
                     >
-                      <Link
-                        href={`/dashboard/instructors/${instructor.id}/edit`}
-                        className="flex items-center justify-center"
-                      >
-                        <Pencil className="ml-1 h-4 w-4" />
-                        עריכה
-                      </Link>
+                      <Pencil className="ml-1 h-4 w-4" />
+                      עריכה
                     </Button>
                     <Button
                       variant="outline"
@@ -520,6 +568,17 @@ export function InstructorsPageClient({ instructors }: Props) {
           )}
         </DialogContent>
       </Dialog>
+
+      <InstructorDetailsModal
+        instructorId={detailModalInstructorId}
+        open={detailModalOpen}
+        initialEditMode={detailModalEdit}
+        onOpenChange={(o) => {
+          setDetailModalOpen(o);
+          if (!o) setDetailModalInstructorId(null);
+        }}
+        onSaveSuccess={syncInstructorsCache}
+      />
     </>
   );
 }

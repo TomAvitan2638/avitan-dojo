@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { useFormState, useFormStatus } from "react-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { updateStudent } from "@/server/actions/update-student";
+import { invalidateStudentsPageAndDashboardHome } from "@/lib/students-page-query";
 import { StudentImageUpload } from "@/components/students/student-image-upload";
 import { formNativeSelectClassName } from "@/lib/form-field";
 import { Loader2, CheckCircle } from "lucide-react";
@@ -105,6 +107,7 @@ export function StudentEditForm({
   hideNavigation = false,
   onSuccess,
 }: Props) {
+  const queryClient = useQueryClient();
   const [selectedCenterId, setSelectedCenterId] = useState(student.centerId);
   const [showSuccess, setShowSuccess] = useState(false);
   const [state, formAction] = useFormState(
@@ -113,11 +116,14 @@ export function StudentEditForm({
   );
 
   useEffect(() => {
-    if (state?.success && onSuccess) {
-      onSuccess();
+    if (state?.success) {
+      void invalidateStudentsPageAndDashboardHome(queryClient);
+      if (onSuccess) {
+        onSuccess();
+      }
       setShowSuccess(true);
     }
-  }, [state?.success, onSuccess]);
+  }, [state?.success, onSuccess, queryClient]);
 
   useEffect(() => {
     if (state?.error) {
@@ -132,16 +138,16 @@ export function StudentEditForm({
   const showError = state?.error;
 
   const modalInputClass =
-    "bg-zinc-700 border-white/20 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary";
+    "bg-muted border-border focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary";
 
   const filteredGroups = selectedCenterId
     ? groups.filter((g) => g.centerId === selectedCenterId)
     : [];
 
   return (
-    <Card className="max-w-2xl border-white/10 bg-zinc-800">
+    <Card className="max-w-2xl border-border bg-card">
       <CardHeader>
-        <CardTitle className="text-white">עריכת פרטי תלמיד</CardTitle>
+        <CardTitle className="text-foreground">עריכת פרטי תלמיד</CardTitle>
       </CardHeader>
       <CardContent>
         <form
@@ -162,7 +168,7 @@ export function StudentEditForm({
               name="identifier"
               placeholder="תעודת זהות"
               dir="ltr"
-              className={`text-left text-white ${modalInputClass}`}
+              className={`text-left text-foreground ${modalInputClass}`}
               defaultValue={student.identifier}
               required
             />
@@ -176,7 +182,7 @@ export function StudentEditForm({
               min={0}
               placeholder="מספר תלמיד"
               dir="ltr"
-              className={`text-left text-white ${modalInputClass}`}
+              className={`text-left text-foreground ${modalInputClass}`}
               defaultValue={student.studentNumber}
             />
           </div>
@@ -187,7 +193,7 @@ export function StudentEditForm({
                 id="firstName"
                 name="firstName"
                 placeholder="שם פרטי"
-                className={`text-white ${modalInputClass}`}
+                className={`text-foreground ${modalInputClass}`}
                 defaultValue={student.firstName}
                 required
               />
@@ -198,7 +204,7 @@ export function StudentEditForm({
                 id="lastName"
                 name="lastName"
                 placeholder="שם משפחה"
-                className={`text-white ${modalInputClass}`}
+                className={`text-foreground ${modalInputClass}`}
                 defaultValue={student.lastName}
                 required
               />
@@ -225,7 +231,7 @@ export function StudentEditForm({
               name="birthDate"
               type="date"
               dir="ltr"
-              className={`text-left text-white ${modalInputClass}`}
+              className={`text-left text-foreground ${modalInputClass}`}
               defaultValue={student.birthDate}
             />
             <p className="text-xs text-muted-foreground">אופציונלי</p>
@@ -238,7 +244,7 @@ export function StudentEditForm({
                 name="phone"
                 placeholder="03-0000000"
                 dir="ltr"
-                className={`text-left text-white ${modalInputClass}`}
+                className={`text-left text-foreground ${modalInputClass}`}
                 defaultValue={student.phone}
               />
             </div>
@@ -249,7 +255,7 @@ export function StudentEditForm({
                 name="mobilePhone"
                 placeholder="050-0000000"
                 dir="ltr"
-                className={`text-left text-white ${modalInputClass}`}
+                className={`text-left text-foreground ${modalInputClass}`}
                 defaultValue={student.mobilePhone}
               />
             </div>
@@ -262,7 +268,7 @@ export function StudentEditForm({
               type="email"
               placeholder="email@example.com"
               dir="ltr"
-              className={`text-left text-white ${modalInputClass}`}
+              className={`text-left text-foreground ${modalInputClass}`}
               defaultValue={student.email}
             />
           </div>
@@ -272,7 +278,7 @@ export function StudentEditForm({
               id="city"
               name="city"
               placeholder="עיר"
-              className={`text-white ${modalInputClass}`}
+              className={`text-foreground ${modalInputClass}`}
               defaultValue={student.city}
             />
           </div>
@@ -282,7 +288,7 @@ export function StudentEditForm({
               id="street"
               name="street"
               placeholder="רחוב ומספר בית"
-              className={`text-white ${modalInputClass}`}
+              className={`text-foreground ${modalInputClass}`}
               defaultValue={student.street}
             />
           </div>
@@ -293,7 +299,7 @@ export function StudentEditForm({
               name="postalCode"
               placeholder="מיקוד"
               dir="ltr"
-              className={`text-left text-white ${modalInputClass}`}
+              className={`text-left text-foreground ${modalInputClass}`}
               defaultValue={student.postalCode}
             />
           </div>
@@ -307,7 +313,7 @@ export function StudentEditForm({
               step={0.1}
               placeholder="ק״ג"
               dir="ltr"
-              className={`text-left text-white ${modalInputClass}`}
+              className={`text-left text-foreground ${modalInputClass}`}
               defaultValue={student.weight}
             />
           </div>
@@ -478,7 +484,7 @@ export function StudentEditForm({
               {state.error}
             </p>
           )}
-          <div className="flex flex-wrap gap-2 border-t border-white/10 pt-6 mt-2">
+          <div className="flex flex-wrap gap-2 border-t border-border pt-6 mt-2">
             <SubmitButton
               hideNavigation={hideNavigation}
               showSavedState={showSuccess}

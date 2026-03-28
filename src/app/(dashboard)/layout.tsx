@@ -1,5 +1,6 @@
 import { requireMfaSession } from "@/lib/auth-guard";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { QueryProvider } from "@/components/providers/query-provider";
 
 export default async function DashboardLayout({
   children,
@@ -8,5 +9,9 @@ export default async function DashboardLayout({
 }) {
   await requireMfaSession();
 
-  return <DashboardShell>{children}</DashboardShell>;
+  return (
+    <QueryProvider>
+      <DashboardShell>{children}</DashboardShell>
+    </QueryProvider>
+  );
 }

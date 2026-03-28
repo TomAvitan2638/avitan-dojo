@@ -1,9 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { useTransition } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,7 +35,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import Link from "next/link";
 import {
   createRecordDialogClassName,
   formNativeSelectClassName,
@@ -47,6 +44,27 @@ import { createGroup } from "@/server/actions/create-group";
 import { deleteGroup } from "@/server/actions/delete-group";
 import { TRAINING_DAYS_ORDER, TRAINING_DAY_LABELS } from "@/lib/training-days";
 import type { TrainingDay } from "@prisma/client";
+import {
+  RecordDialogBodyLock,
+  RecordDialogCancelButton,
+  RecordDialogPrimarySubmitButton,
+  RecordDialogSaveTailBanners,
+  recordDialogBlockDismiss,
+  useRecordDialogPostSavePhase,
+  useWrappedFormState,
+} from "@/components/record-dialog/record-dialog-save-ux";
+import { useGroupsPageQuery } from "@/hooks/use-groups-page-query";
+import type { GroupsPageQueryScope } from "@/types/groups-page";
+import {
+  invalidateGroupsPageAndDashboardHome,
+  invalidateGroupsPageQueries,
+} from "@/lib/groups-page-query";
+import { GroupDetailsModal } from "@/components/groups/group-details-modal";
+import { notifyDataWrite } from "@/lib/data-write-bus";
+import {
+  ListLoadingBanner,
+  GroupsListSkeletonGrid,
+} from "@/components/dashboard/dashboard-loading-skeleton";
 
 type ScheduleSlot = {
   trainingDay: TrainingDay;
@@ -54,59 +72,38 @@ type ScheduleSlot = {
   endTime: string;
 };
 
-type GroupRow = {
-  id: string;
-  name: string;
-  centerName: string;
-  instructorName: string;
-  notes: string | null;
-  studentsCount: number;
-  boysCount: number;
-  girlsCount: number;
-  scheduleSummary: { day: string; time: string }[];
-};
-
-type CenterOption = { id: string; name: string };
-type InstructorOption = { id: string; name: string };
-
 type Props = {
-  groups: GroupRow[];
-  centers: CenterOption[];
-  instructors: InstructorOption[];
+  queryScope: GroupsPageQueryScope;
 };
 
-function CreateGroupSubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button
-      type="submit"
-      className="bg-dojo-red hover:bg-dojo-red/90"
-      disabled={pending}
-    >
-      {pending ? (
-        <>
-          <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-          שומר...
-        </>
-      ) : (
-        "שמירה"
-      )}
-    </Button>
-  );
-}
+export function GroupsPageClient({ queryScope }: Props) {
+  const queryClient = useQueryClient();
+  const {
+    data,
+    isError,
+    error,
+    refetch,
+    isPending,
+  } = useGroupsPageQuery({ scope: queryScope });
 
-export function GroupsPageClient({
-  groups,
-  centers,
-  instructors,
-}: Props) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const syncGroupsCache = useCallback(async () => {
+    await invalidateGroupsPageQueries(queryClient);
+  }, [queryClient]);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [state, formAction] = useFormState(createGroup, null);
   const createSuccessHandledRef = useRef(false);
-  const [createPhase, setCreatePhase] = useState<"idle" | "refreshing" | "success">("idle");
+  const { state, formAction, submitBusy } = useWrappedFormState(createGroup, null);
+  const { tailPhase: createPhase } = useRecordDialogPostSavePhase({
+    success: state?.success,
+    isOpen: isAddDialogOpen,
+    handledRef: createSuccessHandledRef,
+    onAutoClose: () => {
+      setIsAddDialogOpen(false);
+      setSchedules([{ trainingDay: "SUNDAY", startTime: "16:00", endTime: "17:00" }]);
+    },
+    syncOnSuccess: syncGroupsCache,
+  });
   const [deleteDialogGroup, setDeleteDialogGroup] = useState<{
     id: string;
     name: string;
@@ -119,34 +116,17 @@ export function GroupsPageClient({
   const [schedules, setSchedules] = useState<ScheduleSlot[]>([
     { trainingDay: "SUNDAY", startTime: "16:00", endTime: "17:00" },
   ]);
+  const [detailModalGroupId, setDetailModalGroupId] = useState<string | null>(
+    null
+  );
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [detailModalEdit, setDetailModalEdit] = useState(false);
 
-  useEffect(() => {
-    if (state?.success && isAddDialogOpen && !createSuccessHandledRef.current) {
-      createSuccessHandledRef.current = true;
-      setCreatePhase("refreshing");
-      startTransition(() => router.refresh());
-    }
-  }, [state?.success, isAddDialogOpen, router]);
-
-  useEffect(() => {
-    if (createPhase === "refreshing" && !isPending) setCreatePhase("success");
-  }, [createPhase, isPending]);
-
-  useEffect(() => {
-    if (createPhase === "success") {
-      const t = setTimeout(() => {
-        setIsAddDialogOpen(false);
-        setCreatePhase("idle");
-        createSuccessHandledRef.current = false;
-        setSchedules([{ trainingDay: "SUNDAY", startTime: "16:00", endTime: "17:00" }]);
-      }, 1200);
-      return () => clearTimeout(t);
-    }
-  }, [createPhase]);
-
-  useEffect(() => {
-    if (deletePhase === "refreshing" && !isPending) setDeletePhase("success");
-  }, [deletePhase, isPending]);
+  const openGroupModal = (id: string, edit = false) => {
+    setDetailModalEdit(edit);
+    setDetailModalGroupId(id);
+    setDetailModalOpen(true);
+  };
 
   useEffect(() => {
     if (deletePhase === "success") {
@@ -165,7 +145,11 @@ export function GroupsPageClient({
     setDeleteState((prev) => ({ ...prev, pending: false }));
     if (result.success) {
       setDeletePhase("refreshing");
-      startTransition(() => router.refresh());
+      try {
+        await invalidateGroupsPageAndDashboardHome(queryClient);
+      } finally {
+        setDeletePhase("success");
+      }
     } else {
       setDeleteState((prev) => ({ ...prev, error: result.error }));
     }
@@ -180,13 +164,23 @@ export function GroupsPageClient({
     }
   };
 
-  const filteredGroups = groups.filter(
-    (g) =>
-      g.name.includes(searchQuery) ||
-      g.centerName.includes(searchQuery) ||
-      g.instructorName.includes(searchQuery) ||
-      (g.notes?.includes(searchQuery) ?? false)
+  const groups = data?.groups ?? [];
+  const centers = data?.centers ?? [];
+  const instructors = data?.instructors ?? [];
+
+  const filteredGroups = useMemo(
+    () =>
+      groups.filter(
+        (g) =>
+          g.name.includes(searchQuery) ||
+          g.centerName.includes(searchQuery) ||
+          g.instructorName.includes(searchQuery) ||
+          (g.notes?.includes(searchQuery) ?? false)
+      ),
+    [groups, searchQuery]
   );
+
+  const loadingWithoutData = isPending && !data;
 
   const addSchedule = () => {
     setSchedules((prev) => [
@@ -205,6 +199,67 @@ export function GroupsPageClient({
     );
   };
 
+  if (isError && !data) {
+    return (
+      <>
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative flex-1 sm:max-w-xs">
+            <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              disabled
+              placeholder="חיפוש קבוצה..."
+              className="bg-secondary pr-10"
+            />
+          </div>
+          <Button type="button" disabled className="bg-dojo-red/50">
+            <Plus className="ml-2 h-4 w-4" />
+            הוספת קבוצה
+          </Button>
+        </div>
+        <Card className="border-destructive/30 bg-card">
+          <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
+            <p className="text-sm text-destructive" role="alert">
+              {error instanceof Error ? error.message : "שגיאה בטעינת הקבוצות"}
+            </p>
+            <Button type="button" variant="outline" onClick={() => refetch()}>
+              נסה שוב
+            </Button>
+          </CardContent>
+        </Card>
+      </>
+    );
+  }
+
+  if (loadingWithoutData) {
+    return (
+      <>
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative flex-1 sm:max-w-xs">
+            <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              disabled
+              placeholder="חיפוש קבוצה..."
+              className="bg-secondary pr-10"
+            />
+          </div>
+          <Button type="button" disabled className="bg-dojo-red/50">
+            <Plus className="ml-2 h-4 w-4" />
+            הוספת קבוצה
+          </Button>
+        </div>
+        <div className="space-y-6">
+          <ListLoadingBanner
+            title="טוען נתוני קבוצות..."
+            subtitle="אנא המתן — טוענים רשימת קבוצות מהשרת"
+          />
+          <GroupsListSkeletonGrid />
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -220,12 +275,8 @@ export function GroupsPageClient({
         <Dialog
           open={isAddDialogOpen}
           onOpenChange={(open) => {
-            if (!open && createPhase === "refreshing") return;
+            if (!open && recordDialogBlockDismiss(createPhase, submitBusy)) return;
             setIsAddDialogOpen(open);
-            if (!open) {
-              setCreatePhase("idle");
-              createSuccessHandledRef.current = false;
-            }
           }}
         >
           <DialogTrigger asChild>
@@ -246,6 +297,7 @@ export function GroupsPageClient({
               className="flex min-h-0 flex-1 flex-col"
             >
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-4">
+                <RecordDialogBodyLock tailPhase={createPhase} className="min-h-0">
                 <div className="grid gap-4">
                   <input
                     type="hidden"
@@ -367,26 +419,10 @@ export function GroupsPageClient({
                     />
                   </div>
                 </div>
+                </RecordDialogBodyLock>
               </div>
               <div className="shrink-0 space-y-3 border-t border-border/70 bg-background px-6 py-4">
-                {createPhase === "refreshing" && (
-                  <div
-                    className="flex items-center gap-2 rounded-md border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm text-blue-600 dark:text-blue-400"
-                    role="status"
-                  >
-                    <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
-                    מעדכן נתונים...
-                  </div>
-                )}
-                {createPhase === "success" && (
-                  <div
-                    className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-600 dark:text-green-400"
-                    role="status"
-                  >
-                    <CheckCircle className="h-5 w-5 shrink-0" />
-                    הרשומה נשמרה בהצלחה
-                  </div>
-                )}
+                <RecordDialogSaveTailBanners phase={createPhase} />
                 {state?.error && (
                   <p className="text-sm text-destructive" role="alert">
                     {state.error}
@@ -395,14 +431,10 @@ export function GroupsPageClient({
                 <div className="flex justify-start gap-2">
                   {createPhase === "idle" && (
                     <>
-                      <CreateGroupSubmitButton />
-                      <Button
-                        type="button"
-                        variant="outline"
+                      <RecordDialogPrimarySubmitButton />
+                      <RecordDialogCancelButton
                         onClick={() => setIsAddDialogOpen(false)}
-                      >
-                        ביטול
-                      </Button>
+                      />
                     </>
                   )}
                 </div>
@@ -490,17 +522,25 @@ export function GroupsPageClient({
                   )}
                 </div>
                 <div className="mt-auto flex gap-2 pt-4">
-                  <Button variant="outline" size="sm" className="flex-1" asChild>
-                    <Link href={`/dashboard/groups/${group.id}`}>
-                      <Eye className="ml-1 h-4 w-4" />
-                      צפייה
-                    </Link>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex flex-1 items-center justify-center"
+                    type="button"
+                    onClick={() => openGroupModal(group.id)}
+                  >
+                    <Eye className="ml-1 h-4 w-4" />
+                    צפייה
                   </Button>
-                  <Button variant="outline" size="sm" className="flex-1" asChild>
-                    <Link href={`/dashboard/groups/${group.id}/edit`}>
-                      <Pencil className="ml-1 h-4 w-4" />
-                      עריכה
-                    </Link>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex flex-1 items-center justify-center"
+                    type="button"
+                    onClick={() => openGroupModal(group.id, true)}
+                  >
+                    <Pencil className="ml-1 h-4 w-4" />
+                    עריכה
                   </Button>
                   <Button
                     variant="outline"
@@ -599,6 +639,20 @@ export function GroupsPageClient({
           )}
         </DialogContent>
       </Dialog>
+
+      <GroupDetailsModal
+        groupId={detailModalGroupId}
+        open={detailModalOpen}
+        initialEditMode={detailModalEdit}
+        onOpenChange={(o) => {
+          setDetailModalOpen(o);
+          if (!o) setDetailModalGroupId(null);
+        }}
+        onSaveSuccess={async () => {
+          await invalidateGroupsPageAndDashboardHome(queryClient);
+          notifyDataWrite();
+        }}
+      />
     </>
   );
 }

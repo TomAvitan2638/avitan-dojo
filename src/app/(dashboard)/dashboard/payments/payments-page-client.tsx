@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useTransition } from "react";
+import React, { useState, useEffect, useMemo, useTransition, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useFormState, useFormStatus } from "react-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -36,6 +36,12 @@ import {
 } from "@/server/actions/get-students-for-payment-selector";
 import { PaymentStudentSelect } from "@/components/payments/PaymentStudentSelect";
 import {
+  ListLoadingBanner,
+  PaymentsListSkeletonTable,
+  LIST_PAGE_SHIMMER_CLASS,
+} from "@/components/dashboard/dashboard-loading-skeleton";
+import { cn } from "@/lib/utils";
+import {
   updatePayment,
   type UpdatePaymentState,
 } from "@/server/actions/update-payment";
@@ -58,45 +64,33 @@ import {
 import type { PaymentType, MonthlyPaymentSubtype, PaymentMethod } from "@prisma/client";
 import Link from "next/link";
 import { todayLocalCalendarIso } from "@/lib/date-only";
+import {
+  RECORD_DIALOG_AUTOCLOSE_MS,
+  type RecordSaveTailPhase,
+  RecordDialogCancelButton,
+  RecordDialogPrimarySubmitButton,
+  RecordDialogSaveTailBanners,
+  recordDialogBlockDismiss,
+  useRecordDialogPostSavePhase,
+  useWrappedFormState,
+} from "@/components/record-dialog/record-dialog-save-ux";
+import { usePaymentsPageQuery } from "@/hooks/use-payments-page-query";
+import type {
+  PaymentsPageQueryScope,
+  PaymentListRow,
+  PaymentsSystemDataRow,
+  PaymentsPageListParams,
+} from "@/types/payments-page";
+import {
+  invalidatePaymentsPageAndDashboardHome,
+  invalidatePaymentsPageQueries,
+} from "@/lib/payments-page-query";
 
-type PaymentRow = {
-  id: string;
-  studentId: string;
-  paymentType: PaymentType;
-  monthlySubtype: MonthlyPaymentSubtype | null;
-  paymentDate: string;
-  paymentDateIso: string;
-  amount: number;
-  paymentMethod: PaymentMethod | null;
-  studentIdentifier: string;
-  studentName: string;
-  centerName: string | null;
-  groupName: string | null;
-  months: string[];
-  equipmentItems: { code: string; quantity: number; unitAmountSnapshot: number | null }[];
-  equipmentNotes: string | null;
-  examCode: string | null;
-  examDate: string | null;
-  /** YYYY-MM-DD for date inputs; derived with UTC calendar components from DB */
-  examDateIso: string | null;
-  bankNumber: string | null;
-  checkNumber: string | null;
-  waiverReason: string | null;
-};
-
-type SystemDataRow = { id: string; code: string; description: string; amount: number };
+type PaymentRow = PaymentListRow;
+type SystemDataRow = PaymentsSystemDataRow;
 
 type Props = {
-  payments: PaymentRow[];
-  sportsEquipment: SystemDataRow[];
-  exams: SystemDataRow[];
-  totalCount: number;
-  currentPage: number;
-  pageSize: number;
-  totalPages: number;
-  initialSearch?: string;
-  initialFilterPaymentType?: string;
-  initialFilterMonthlySubtype?: string;
+  queryScope: PaymentsPageQueryScope;
 };
 
 const MONTHS_HE = [
@@ -104,51 +98,62 @@ const MONTHS_HE = [
   "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר",
 ];
 
-function CreatePaymentSubmitButton({
-  forceDisabled,
-}: {
-  forceDisabled?: boolean;
-}) {
-  const { pending } = useFormStatus();
-  const disabled = pending || forceDisabled;
-  return (
-    <Button
-      type="submit"
-      className="bg-dojo-red hover:bg-dojo-red/90"
-      disabled={disabled}
-    >
-      {pending ? (
-        <>
-          <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-          שומר...
-        </>
-      ) : (
-        "שמירה"
-      )}
-    </Button>
-  );
-}
-
-export function PaymentsPageClient({
-  payments,
-  sportsEquipment,
-  exams,
-  totalCount,
-  currentPage,
-  pageSize,
-  totalPages,
-  initialSearch = "",
-  initialFilterPaymentType = "",
-  initialFilterMonthlySubtype = "",
-}: Props) {
+export function PaymentsPageClient({ queryScope }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
+  const queryClient = useQueryClient();
+
+  const listParams = useMemo((): PaymentsPageListParams => {
+    const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10) || 1);
+    const search = (searchParams.get("search") ?? "").trim();
+    const filterType = searchParams.get("filterType") ?? "";
+    const filterSubtype = searchParams.get("filterSubtype") ?? "";
+    return { page, search, filterType, filterSubtype };
+  }, [searchParams]);
+
+  const syncPaymentsCache = useCallback(async () => {
+    await invalidatePaymentsPageQueries(queryClient);
+  }, [queryClient]);
+
+  const {
+    data,
+    isError,
+    error,
+    refetch,
+    isPending: paymentsQueryPending,
+    isFetching: paymentsQueryFetching,
+  } = usePaymentsPageQuery({ scope: queryScope, listParams });
+
+  const payments = data?.payments ?? [];
+  const sportsEquipment = data?.sportsEquipment ?? [];
+  const exams = data?.exams ?? [];
+  const totalCount = data?.totalCount ?? 0;
+  const currentPage = data?.currentPage ?? 1;
+  const pageSize = data?.pageSize ?? 25;
+  const totalPages = data?.totalPages ?? 1;
+
+  const loadingWithoutData = paymentsQueryPending && !data;
   const [createOpen, setCreateOpen] = useState(false);
-  const [state, formAction] = useFormState(createPayment, null);
   const createSuccessHandledRef = React.useRef(false);
-  const [createPhase, setCreatePhase] = useState<"idle" | "refreshing" | "success">("idle");
-  const [isCreateSubmitting, setIsCreateSubmitting] = useState(false);
+  const { state, formAction, submitBusy } = useWrappedFormState(createPayment, null);
+  const { tailPhase: createPhase } = useRecordDialogPostSavePhase({
+    success: state?.success,
+    successVersion: state?._ts,
+    isOpen: createOpen,
+    handledRef: createSuccessHandledRef,
+    onAutoClose: () => {
+      setCreateOpen(false);
+      setPaymentType("");
+      setMonthlySubtype("");
+      setSelectedMonths([]);
+      setEquipmentRows([{ code: "", quantity: 1 }]);
+      setEquipmentAmount("");
+      setExamAmount("");
+      setSelectedExamCode("");
+    },
+    syncOnSuccess: syncPaymentsCache,
+  });
   const [createFormKey, setCreateFormKey] = useState(0);
   const [paymentType, setPaymentType] = useState<PaymentType | "">("");
   const [monthlySubtype, setMonthlySubtype] = useState<MonthlyPaymentSubtype | "">("");
@@ -163,9 +168,7 @@ export function PaymentsPageClient({
   const deepLinkConsumedRef = React.useRef(false);
 
   const resetCreateFormState = React.useCallback(() => {
-    setCreatePhase("idle");
-    createSuccessHandledRef.current = true;
-    setIsCreateSubmitting(false);
+    createSuccessHandledRef.current = false;
     setPaymentType("");
     setMonthlySubtype("");
     setSelectedMonths([]);
@@ -178,12 +181,9 @@ export function PaymentsPageClient({
     setCreateFormKey((k) => k + 1);
   }, []);
   const [detailPayment, setDetailPayment] = useState<PaymentRow | null>(null);
-  const [filterPaymentType, setFilterPaymentType] = useState<PaymentType | "">(
-    initialFilterPaymentType as PaymentType | ""
-  );
-  const [filterMonthlySubtype, setFilterMonthlySubtype] = useState<
-    MonthlyPaymentSubtype | ""
-  >(initialFilterMonthlySubtype as MonthlyPaymentSubtype | "");
+  const filterPaymentType = (listParams.filterType as PaymentType | "") || "";
+  const filterMonthlySubtype =
+    (listParams.filterSubtype as MonthlyPaymentSubtype | "") || "";
   const [editPayment, setEditPayment] = useState<PaymentRow | null>(null);
   const [selectorStudents, setSelectorStudents] = useState<StudentOption[]>([]);
   const [selectorStudentsLoading, setSelectorStudentsLoading] = useState(false);
@@ -231,10 +231,6 @@ export function PaymentsPageClient({
     router.replace(qs ? `/dashboard/payments?${qs}` : "/dashboard/payments", { scroll: false });
   }, [searchParams, router]);
 
-  useEffect(() => {
-    setFilterPaymentType(initialFilterPaymentType as PaymentType | "");
-    setFilterMonthlySubtype(initialFilterMonthlySubtype as MonthlyPaymentSubtype | "");
-  }, [initialFilterPaymentType, initialFilterMonthlySubtype]);
   const [editSuccessPendingRefresh, setEditSuccessPendingRefresh] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deletePending, setDeletePending] = useState(false);
@@ -310,7 +306,7 @@ export function PaymentsPageClient({
     className?: string;
   }) => (
     <TableHead
-      className={`cursor-pointer select-none text-right text-muted-foreground hover:text-white ${className ?? ""}`}
+      className={`cursor-pointer select-none text-right text-muted-foreground hover:text-foreground ${className ?? ""}`}
       onClick={() => handleSort(col)}
     >
       <span className="flex items-center justify-end gap-1">
@@ -329,60 +325,22 @@ export function PaymentsPageClient({
   );
 
   useEffect(() => {
-    if (state?.success && createOpen && !createSuccessHandledRef.current) {
-      createSuccessHandledRef.current = true;
-      setCreatePhase("refreshing");
-      startTransition(() => router.refresh());
-    }
-  }, [state?.success, state?._ts, createOpen, router]);
+    if (!editSuccessPendingRefresh) return;
+    const t = setTimeout(() => {
+      setEditPayment(null);
+      setUpdateState(null);
+      setEditSuccessPendingRefresh(false);
+    }, RECORD_DIALOG_AUTOCLOSE_MS);
+    return () => clearTimeout(t);
+  }, [editSuccessPendingRefresh]);
 
-  useEffect(() => {
-    if (createPhase === "refreshing" && !isPending) {
-      setCreatePhase("success");
-    }
-  }, [createPhase, isPending]);
-
-  useEffect(() => {
-    if (createPhase === "success") {
-      const t = setTimeout(() => {
-        setCreateOpen(false);
-        setCreatePhase("idle");
-        createSuccessHandledRef.current = false;
-        setPaymentType("");
-        setMonthlySubtype("");
-        setSelectedMonths([]);
-        setEquipmentRows([{ code: "", quantity: 1 }]);
-        setEquipmentAmount("");
-        setExamAmount("");
-        setSelectedExamCode("");
-      }, 1200);
-      return () => clearTimeout(t);
-    }
-  }, [createPhase]);
-
-  useEffect(() => {
-    if (editSuccessPendingRefresh && !isPending) {
-      const t = setTimeout(() => {
-        setEditPayment(null);
-        setUpdateState(null);
-        setEditSuccessPendingRefresh(false);
-      }, 1200);
-      return () => clearTimeout(t);
-    }
-  }, [editSuccessPendingRefresh, isPending]);
-
-  useEffect(() => {
-    if (deletePhase === "refreshing" && !isPending) {
-      setDeletePhase("success");
-    }
-  }, [deletePhase, isPending]);
 
   useEffect(() => {
     if (deletePhase === "success") {
       const t = setTimeout(() => {
         setDeleteConfirmId(null);
         setDeletePhase("idle");
-      }, 1200);
+      }, RECORD_DIALOG_AUTOCLOSE_MS);
       return () => clearTimeout(t);
     }
   }, [deletePhase]);
@@ -463,6 +421,50 @@ export function PaymentsPageClient({
 
   const monthlyStudents = selectorStudents.filter((s) => s.hasActiveMembership);
 
+  if (isError && !data) {
+    return (
+      <TooltipProvider>
+        <Card className="border-destructive/30 bg-card">
+          <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
+            <p className="text-sm text-destructive" role="alert">
+              {error instanceof Error ? error.message : "שגיאה בטעינת התשלומים"}
+            </p>
+            <Button type="button" variant="outline" onClick={() => refetch()}>
+              נסה שוב
+            </Button>
+          </CardContent>
+        </Card>
+      </TooltipProvider>
+    );
+  }
+
+  if (loadingWithoutData) {
+    return (
+      <TooltipProvider>
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-lg font-medium text-muted-foreground">היסטוריית תשלומים</h2>
+          <Button type="button" disabled className="bg-dojo-red/50">
+            <Plus className="ml-2 h-4 w-4" />
+            הוספת תשלום
+          </Button>
+        </div>
+        <div className="space-y-6">
+          <ListLoadingBanner
+            title="טוען נתוני תשלומים..."
+            subtitle="אנא המתן — טוענים היסטוריית תשלומים וסינונים"
+          />
+          <div
+            className={cn(
+              "h-10 max-w-xs rounded-md border border-border/60",
+              LIST_PAGE_SHIMMER_CLASS
+            )}
+          />
+          <PaymentsListSkeletonTable />
+        </div>
+      </TooltipProvider>
+    );
+  }
+
   return (
     <TooltipProvider>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -470,13 +472,13 @@ export function PaymentsPageClient({
         <Dialog
           open={createOpen}
           onOpenChange={(open) => {
-            if (!open && createPhase === "refreshing") return;
+            if (!open && recordDialogBlockDismiss(createPhase, submitBusy)) return;
             setCreateOpen(open);
+            if (open) {
+              createSuccessHandledRef.current = false;
+            }
             if (!open) {
               setPrefillStudentId(null);
-              setCreatePhase("idle");
-              createSuccessHandledRef.current = false;
-              setIsCreateSubmitting(false);
             }
           }}
         >
@@ -490,9 +492,9 @@ export function PaymentsPageClient({
               הוספת תשלום
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-h-[90vh] overflow-y-auto bg-zinc-900 border-white/10 sm:max-w-lg">
+          <DialogContent className="max-h-[90vh] overflow-y-auto bg-card border-border sm:max-w-lg">
             <DialogHeader>
-              <DialogTitle className="text-white">הוספת תשלום</DialogTitle>
+              <DialogTitle className="text-foreground">הוספת תשלום</DialogTitle>
               <DialogDescription className="text-muted-foreground">
                 בחר סוג תשלום והזן את הפרטים
               </DialogDescription>
@@ -503,12 +505,11 @@ export function PaymentsPageClient({
               className="grid gap-4 py-4"
               onSubmit={() => {
                 createSuccessHandledRef.current = false;
-                setIsCreateSubmitting(true);
               }}
-              {...(createPhase !== "idle" ? { "aria-busy": true } : {})}
+              {...(createPhase !== "idle" || submitBusy ? { "aria-busy": true } : {})}
             >
               <fieldset
-                disabled={isCreateSubmitting || createPhase !== "idle"}
+                disabled={submitBusy || createPhase !== "idle"}
                 className="contents"
               >
               <input type="hidden" name="paymentType" value={paymentType} />
@@ -560,7 +561,7 @@ export function PaymentsPageClient({
                         paymentType === "MONTHLY" ? monthlyStudents : selectorStudents
                       }
                       loading={selectorStudentsLoading}
-                      disabled={isCreateSubmitting || createPhase !== "idle"}
+                      disabled={submitBusy || createPhase !== "idle"}
                       initialStudentId={prefillStudentId}
                     />
                     {paymentType === "MONTHLY" &&
@@ -765,7 +766,7 @@ export function PaymentsPageClient({
                             const unitAmount = r.code ? getEquipmentAmount(r.code) : 0;
                             const lineTotal = unitAmount * r.quantity;
                             return (
-                              <div key={idx} className="flex flex-wrap items-center gap-2 rounded border border-white/10 p-2">
+                              <div key={idx} className="flex flex-wrap items-center gap-2 rounded border border-border p-2">
                                 <select
                                   value={r.code}
                                   onChange={(e) =>
@@ -794,7 +795,7 @@ export function PaymentsPageClient({
                                   }
                                   className="w-16"
                                 />
-                                <span className="text-white font-medium whitespace-nowrap">
+                                <span className="text-foreground font-medium whitespace-nowrap">
                                   = ₪{lineTotal.toFixed(2)}
                                 </span>
                                 <Button
@@ -810,9 +811,9 @@ export function PaymentsPageClient({
                             );
                           })}
                         </div>
-                        <div className="rounded border border-white/10 bg-white/5 px-3 py-2 text-sm">
+                        <div className="rounded border border-border bg-muted/50 px-3 py-2 text-sm">
                           <span className="text-muted-foreground">סה״כ חושב: </span>
-                          <span className="font-medium text-white">
+                          <span className="font-medium text-foreground">
                             ₪{equipmentCalculatedTotal.toFixed(2)}
                           </span>
                         </div>
@@ -892,24 +893,7 @@ export function PaymentsPageClient({
                 </>
               )}
 
-              {createPhase === "refreshing" && (
-                <div
-                  className="flex items-center gap-2 rounded-md border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm text-blue-600 dark:text-blue-400"
-                  role="status"
-                >
-                  <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
-                  מעדכן נתונים...
-                </div>
-              )}
-              {createPhase === "success" && (
-                <div
-                  className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-600 dark:text-green-400"
-                  role="status"
-                >
-                  <CheckCircle className="h-5 w-5 shrink-0" />
-                  הרשומה נשמרה בהצלחה
-                </div>
-              )}
+              <RecordDialogSaveTailBanners phase={createPhase} />
               {state?.error && (
                 <p className="text-sm text-destructive" role="alert">
                   {state.error}
@@ -919,14 +903,8 @@ export function PaymentsPageClient({
               <div className="flex justify-start gap-2 pt-2">
                 {createPhase === "idle" && paymentType && (
                   <>
-                    <CreatePaymentSubmitButton forceDisabled={isCreateSubmitting} />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setCreateOpen(false)}
-                    >
-                      ביטול
-                    </Button>
+                    <RecordDialogPrimarySubmitButton />
+                    <RecordDialogCancelButton onClick={() => setCreateOpen(false)} />
                   </>
                 )}
               </div>
@@ -957,8 +935,8 @@ export function PaymentsPageClient({
           <Input
             name="search"
             placeholder="חיפוש (ת״ז, שם, מרכז, קבוצה, סוג)"
-            defaultValue={initialSearch}
-            key={initialSearch}
+            defaultValue={listParams.search}
+            key={`${listParams.search}-${listParams.filterType}-${listParams.filterSubtype}`}
             className="pr-9"
           />
           <button type="submit" className="sr-only">
@@ -972,7 +950,7 @@ export function PaymentsPageClient({
               const val = e.target.value as PaymentType | "";
               const qs = new URLSearchParams();
               qs.set("page", "1");
-              if (initialSearch) qs.set("search", initialSearch);
+              if (listParams.search) qs.set("search", listParams.search);
               if (val) qs.set("filterType", val);
               startTransition(() =>
                 router.push(`/dashboard/payments?${qs.toString()}`)
@@ -992,7 +970,7 @@ export function PaymentsPageClient({
                 const val = e.target.value as MonthlyPaymentSubtype | "";
                 const qs = new URLSearchParams();
                 qs.set("page", "1");
-                if (initialSearch) qs.set("search", initialSearch);
+                if (listParams.search) qs.set("search", listParams.search);
                 qs.set("filterType", "MONTHLY");
                 if (val) qs.set("filterSubtype", val);
                 startTransition(() =>
@@ -1010,11 +988,11 @@ export function PaymentsPageClient({
         </div>
       </div>
 
-      <Card className="border-white/10 bg-zinc-800">
+      <Card className="border-border bg-card">
         <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow className="border-white/10 hover:bg-transparent">
+              <TableRow className="border-border hover:bg-transparent">
                 <SortHeader col="date" label="תאריך" />
                 <SortHeader col="studentId" label="ת״ז" />
                 <SortHeader col="studentName" label="שם" />
@@ -1030,7 +1008,7 @@ export function PaymentsPageClient({
             </TableHeader>
             <TableBody>
               {sortedPayments.length === 0 ? (
-                <TableRow className="border-white/5">
+                <TableRow className="border-border/50">
                   <TableCell
                     colSpan={10}
                     className="py-8 text-center text-muted-foreground"
@@ -1049,20 +1027,20 @@ export function PaymentsPageClient({
                   return (
                     <TableRow
                       key={p.id}
-                      className="border-white/5 hover:bg-white/[0.04]"
+                      className="border-border/50 hover:bg-muted/40"
                     >
-                      <TableCell className="text-white">{p.paymentDate}</TableCell>
-                      <TableCell className="font-mono text-white">
+                      <TableCell className="text-foreground">{p.paymentDate}</TableCell>
+                      <TableCell className="font-mono text-foreground">
                         {p.studentIdentifier}
                       </TableCell>
-                      <TableCell className="text-white">{p.studentName}</TableCell>
+                      <TableCell className="text-foreground">{p.studentName}</TableCell>
                       <TableCell className="text-muted-foreground">
                         {p.centerName ?? "-"}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {p.groupName ?? "-"}
                       </TableCell>
-                      <TableCell className="text-white">
+                      <TableCell className="text-foreground">
                         {getPaymentTypeLabel(p.paymentType)}
                         {p.monthlySubtype &&
                           ` (${getMonthlySubtypeLabel(p.monthlySubtype)})`}
@@ -1082,7 +1060,7 @@ export function PaymentsPageClient({
                           </TooltipContent>
                         </Tooltip>
                       </TableCell>
-                      <TableCell className="font-medium text-white">
+                      <TableCell className="font-medium text-foreground">
                         ₪{p.amount.toFixed(2)}
                       </TableCell>
                       <TableCell>
@@ -1090,7 +1068,7 @@ export function PaymentsPageClient({
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="text-muted-foreground hover:text-white"
+                            className="text-muted-foreground hover:text-foreground"
                             onClick={() => setDetailPayment(p)}
                             title="צפייה"
                           >
@@ -1099,7 +1077,7 @@ export function PaymentsPageClient({
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="text-muted-foreground hover:text-white"
+                            className="text-muted-foreground hover:text-foreground"
                             onClick={() => setEditPayment(p)}
                             title="עריכה"
                           >
@@ -1129,15 +1107,15 @@ export function PaymentsPageClient({
         const paginationQs = (p: number) => {
           const qs = new URLSearchParams();
           qs.set("page", String(p));
-          if (initialSearch) qs.set("search", initialSearch);
-          if (initialFilterPaymentType) qs.set("filterType", initialFilterPaymentType);
-          if (initialFilterPaymentType === "MONTHLY" && initialFilterMonthlySubtype) {
-            qs.set("filterSubtype", initialFilterMonthlySubtype);
+          if (listParams.search) qs.set("search", listParams.search);
+          if (listParams.filterType) qs.set("filterType", listParams.filterType);
+          if (listParams.filterType === "MONTHLY" && listParams.filterSubtype) {
+            qs.set("filterSubtype", listParams.filterSubtype);
           }
           return `/dashboard/payments?${qs.toString()}`;
         };
         return (
-        <div className="mt-4 flex flex-row-reverse items-center justify-between gap-4 border-t border-white/10 pt-4">
+        <div className="mt-4 flex flex-row-reverse items-center justify-between gap-4 border-t border-border pt-4">
           <div className="text-sm text-muted-foreground">
             עמוד {currentPage} מתוך {totalPages}
             <span className="me-2 ms-2">•</span>
@@ -1149,7 +1127,7 @@ export function PaymentsPageClient({
               size="sm"
               disabled={currentPage <= 1}
               asChild={currentPage > 1}
-              className="border-white/10 bg-zinc-800 text-white hover:bg-zinc-700 hover:text-white"
+              className="border-border bg-card text-foreground hover:bg-muted/80 hover:text-foreground"
             >
               {currentPage > 1 ? (
                 <Link href={paginationQs(currentPage - 1)}>
@@ -1168,7 +1146,7 @@ export function PaymentsPageClient({
               size="sm"
               disabled={currentPage >= totalPages}
               asChild={currentPage < totalPages}
-              className="border-white/10 bg-zinc-800 text-white hover:bg-zinc-700 hover:text-white"
+              className="border-border bg-card text-foreground hover:bg-muted/80 hover:text-foreground"
             >
               {currentPage < totalPages ? (
                 <Link href={paginationQs(currentPage + 1)}>
@@ -1188,46 +1166,46 @@ export function PaymentsPageClient({
       })()}
 
       <Dialog open={!!detailPayment} onOpenChange={(o) => !o && setDetailPayment(null)}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto bg-zinc-900 border-white/10 sm:max-w-lg">
+        <DialogContent className="max-h-[90vh] overflow-y-auto bg-card border-border sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-white text-lg">פרטי תשלום</DialogTitle>
+            <DialogTitle className="text-foreground text-lg">פרטי תשלום</DialogTitle>
           </DialogHeader>
           {detailPayment && (
             <div className="space-y-6 text-base">
-              <div className="rounded-lg border border-white/10 bg-white/5 p-4">
-                <h3 className="mb-3 text-base font-medium text-white">פרטים כלליים</h3>
+              <div className="rounded-lg border border-border bg-muted/50 p-4">
+                <h3 className="mb-3 text-base font-medium text-foreground">פרטים כלליים</h3>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                   <span className="text-muted-foreground">תאריך:</span>
-                  <span className="text-white">{detailPayment.paymentDate}</span>
+                  <span className="text-foreground">{detailPayment.paymentDate}</span>
                   <span className="text-muted-foreground">ת״ז:</span>
-                  <span className="text-white font-mono">{detailPayment.studentIdentifier}</span>
+                  <span className="text-foreground font-mono">{detailPayment.studentIdentifier}</span>
                   <span className="text-muted-foreground">שם:</span>
-                  <span className="text-white">{detailPayment.studentName}</span>
+                  <span className="text-foreground">{detailPayment.studentName}</span>
                   <span className="text-muted-foreground">מרכז:</span>
-                  <span className="text-white">{detailPayment.centerName ?? "-"}</span>
+                  <span className="text-foreground">{detailPayment.centerName ?? "-"}</span>
                   <span className="text-muted-foreground">קבוצה:</span>
-                  <span className="text-white">{detailPayment.groupName ?? "-"}</span>
+                  <span className="text-foreground">{detailPayment.groupName ?? "-"}</span>
                   <span className="text-muted-foreground">סוג:</span>
-                  <span className="text-white">
+                  <span className="text-foreground">
                     {getPaymentTypeLabel(detailPayment.paymentType)}
                     {detailPayment.monthlySubtype &&
                       ` - ${getMonthlySubtypeLabel(detailPayment.monthlySubtype)}`}
                   </span>
                   <span className="text-muted-foreground">סכום:</span>
-                  <span className="text-white font-semibold text-lg">
+                  <span className="text-foreground font-semibold text-lg">
                     ₪{detailPayment.amount.toFixed(2)}
                   </span>
                 </div>
               </div>
 
               {detailPayment.paymentType === "MONTHLY" && (
-                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
-                  <h3 className="mb-3 text-base font-medium text-white">פרטי תשלום חודשי</h3>
+                <div className="rounded-lg border border-border bg-muted/50 p-4">
+                  <h3 className="mb-3 text-base font-medium text-foreground">פרטי תשלום חודשי</h3>
                   <div className="space-y-3">
                     {detailPayment.paymentMethod && (
                       <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                         <span className="text-muted-foreground">אמצעי תשלום:</span>
-                        <span className="text-white">
+                        <span className="text-foreground">
                           {getPaymentMethodLabel(detailPayment.paymentMethod)}
                         </span>
                       </div>
@@ -1235,21 +1213,21 @@ export function PaymentsPageClient({
                     {detailPayment.bankNumber && detailPayment.checkNumber && (
                       <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                         <span className="text-muted-foreground">בנק:</span>
-                        <span className="text-white">{detailPayment.bankNumber}</span>
+                        <span className="text-foreground">{detailPayment.bankNumber}</span>
                         <span className="text-muted-foreground">צ׳ק:</span>
-                        <span className="text-white">{detailPayment.checkNumber}</span>
+                        <span className="text-foreground">{detailPayment.checkNumber}</span>
                       </div>
                     )}
                     {detailPayment.waiverReason && (
                       <div>
                         <span className="text-muted-foreground">סיבת פטור:</span>
-                        <p className="mt-1 text-white">{detailPayment.waiverReason}</p>
+                        <p className="mt-1 text-foreground">{detailPayment.waiverReason}</p>
                       </div>
                     )}
                     {detailPayment.months.length > 0 && (
                       <div>
                         <span className="text-muted-foreground">חודשים:</span>
-                        <ul className="mt-2 space-y-1 text-white">
+                        <ul className="mt-2 space-y-1 text-foreground">
                           {detailPayment.months.map((m, idx) => (
                             <li key={idx} className="font-mono">
                               {m}
@@ -1264,19 +1242,19 @@ export function PaymentsPageClient({
 
               {detailPayment.paymentType === "EQUIPMENT" &&
                 detailPayment.equipmentItems.length > 0 && (
-                  <div className="rounded-lg border border-white/10 bg-white/5 p-4">
-                    <h3 className="mb-3 text-base font-medium text-white">פריטי ציוד</h3>
+                  <div className="rounded-lg border border-border bg-muted/50 p-4">
+                    <h3 className="mb-3 text-base font-medium text-foreground">פריטי ציוד</h3>
                     <ul className="space-y-2">
                       {detailPayment.equipmentItems.map((i, idx) => (
                         <li
                           key={idx}
-                          className="flex justify-between gap-4 rounded border border-white/5 px-3 py-2"
+                          className="flex justify-between gap-4 rounded border border-border/50 px-3 py-2"
                         >
-                          <span className="text-white">
+                          <span className="text-foreground">
                             {getEquipmentDescription(i.code)} × {i.quantity}
                           </span>
                           {i.unitAmountSnapshot != null ? (
-                            <span className="text-white font-medium">
+                            <span className="text-foreground font-medium">
                               ₪{(i.unitAmountSnapshot * i.quantity).toFixed(2)}
                               <span className="mr-1 text-muted-foreground text-sm">
                                 (₪{i.unitAmountSnapshot.toFixed(2)} ליחידה)
@@ -1297,15 +1275,15 @@ export function PaymentsPageClient({
                 )}
 
               {detailPayment.paymentType === "EXAM" && detailPayment.examCode && (
-                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
-                  <h3 className="mb-3 text-base font-medium text-white">פרטי מבחן</h3>
+                <div className="rounded-lg border border-border bg-muted/50 p-4">
+                  <h3 className="mb-3 text-base font-medium text-foreground">פרטי מבחן</h3>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                     <span className="text-muted-foreground">סוג מבחן:</span>
-                    <span className="text-white">
+                    <span className="text-foreground">
                       {getExamDescription(detailPayment.examCode)}
                     </span>
                     <span className="text-muted-foreground">תאריך מבחן:</span>
-                    <span className="text-white">{detailPayment.examDate ?? "-"}</span>
+                    <span className="text-foreground">{detailPayment.examDate ?? "-"}</span>
                   </div>
                 </div>
               )}
@@ -1327,11 +1305,11 @@ export function PaymentsPageClient({
           setUpdateState(null);
           setEditSuccessPendingRefresh(false);
         }}
-        onSuccessRequested={() => {
+        onSuccessRequested={async () => {
+          await invalidatePaymentsPageAndDashboardHome(queryClient);
           setEditSuccessPendingRefresh(true);
-          startTransition(() => router.refresh());
         }}
-        isRefreshing={isPending}
+        isRefreshing={paymentsQueryFetching}
         onResult={setUpdateState}
         updateState={updateState}
         students={selectorStudents}
@@ -1357,9 +1335,9 @@ export function PaymentsPageClient({
           }
         }}
       >
-        <DialogContent className="sm:max-w-md bg-zinc-900 border-white/10">
+        <DialogContent className="sm:max-w-md bg-card border-border">
           <DialogHeader>
-            <DialogTitle className="text-white">מחיקת תשלום</DialogTitle>
+            <DialogTitle className="text-foreground">מחיקת תשלום</DialogTitle>
             <DialogDescription className="text-muted-foreground">
               {deletePhase === "refreshing"
                 ? "מעדכן נתונים..."
@@ -1415,7 +1393,11 @@ export function PaymentsPageClient({
                     setDeletePending(false);
                     if (result.success) {
                       setDeletePhase("refreshing");
-                      startTransition(() => router.refresh());
+                      try {
+                        await invalidatePaymentsPageAndDashboardHome(queryClient);
+                      } finally {
+                        setDeletePhase("success");
+                      }
                     }
                   }}
                 >
@@ -1552,6 +1534,13 @@ function EditPaymentDialog({
 
   if (!payment) return null;
 
+  const saveBannerPhase: RecordSaveTailPhase = showUpdateSuccess
+    ? isRefreshing
+      ? "refreshing"
+      : "success"
+    : "idle";
+  const editFormLocked = updatePending || showUpdateSuccess;
+
   const addMonth = () => {
     const used = new Set(editMonths.map((m) => `${m.year}-${m.month}`));
     let y = currentYear;
@@ -1569,9 +1558,9 @@ function EditPaymentDialog({
 
   return (
     <Dialog open={!!payment} onOpenChange={(o) => !o && !isRefreshing && onClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto bg-zinc-900 border-white/10 sm:max-w-lg">
+      <DialogContent className="max-h-[90vh] overflow-y-auto bg-card border-border sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-white">עריכת תשלום</DialogTitle>
+          <DialogTitle className="text-foreground">עריכת תשלום</DialogTitle>
           <DialogDescription className="text-muted-foreground">
             עדכון פרטי תשלום - {getPaymentTypeLabel(payment.paymentType)}
           </DialogDescription>
@@ -1594,6 +1583,10 @@ function EditPaymentDialog({
           }}
           className="grid gap-4 py-4"
         >
+          <fieldset
+            disabled={editFormLocked}
+            className="grid gap-4 border-0 p-0 min-w-0 disabled:pointer-events-none disabled:opacity-60"
+          >
           <div className="grid gap-2">
             <Label htmlFor="edit-paymentDate">תאריך תשלום *</Label>
             <Input
@@ -1606,7 +1599,7 @@ function EditPaymentDialog({
           </div>
           <div className="grid gap-2">
             <Label className="text-muted-foreground">תלמיד</Label>
-            <p className="text-white">
+            <p className="text-foreground">
               {payment.studentName} ({payment.studentIdentifier})
             </p>
           </div>
@@ -1791,7 +1784,7 @@ function EditPaymentDialog({
                   {editEquipmentRows.map((r, idx) => (
                     <div
                       key={idx}
-                      className="flex flex-wrap items-center gap-2 rounded border border-white/10 p-2"
+                      className="flex flex-wrap items-center gap-2 rounded border border-border p-2"
                     >
                       <select
                         name={`equip-code-${idx}`}
@@ -1932,25 +1925,9 @@ function EditPaymentDialog({
               </div>
             </>
           )}
+          </fieldset>
 
-          {showUpdateSuccess && isRefreshing && (
-            <div
-              className="flex items-center gap-2 rounded-md border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm text-blue-600 dark:text-blue-400"
-              role="status"
-            >
-              <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
-              מעדכן נתונים...
-            </div>
-          )}
-          {showUpdateSuccess && !isRefreshing && (
-            <div
-              className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-600 dark:text-green-400"
-              role="status"
-            >
-              <CheckCircle className="h-5 w-5 shrink-0" />
-              הרשומה עודכנה בהצלחה
-            </div>
-          )}
+          <RecordDialogSaveTailBanners phase={saveBannerPhase} />
           {updateState?.error && (
             <p className="text-sm text-destructive" role="alert">
               {updateState.error}
@@ -1961,28 +1938,23 @@ function EditPaymentDialog({
             <Button
               type="submit"
               className="bg-dojo-red hover:bg-dojo-red/90"
-              disabled={updatePending || showUpdateSuccess}
+              disabled={editFormLocked}
             >
               {updatePending ? (
                 <>
                   <Loader2 className="ml-2 h-4 w-4 animate-spin" />
                   מעדכן...
                 </>
-              ) : showUpdateSuccess && isRefreshing ? (
-                <>
-                  <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-                  מעדכן נתונים...
-                </>
-              ) : showUpdateSuccess && !isRefreshing ? (
-                <>
-                  <CheckCircle className="ml-2 h-4 w-4" />
-                  עודכן בהצלחה
-                </>
               ) : (
                 "עדכון"
               )}
             </Button>
-            <Button type="button" variant="outline" onClick={onClose} disabled={updatePending || showUpdateSuccess}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={editFormLocked}
+            >
               ביטול
             </Button>
           </div>

@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import { Header } from "@/components/dashboard/header";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
-import { InstructorDetailsClient } from "./instructor-details-client";
 import { format } from "date-fns";
+import { fetchInstructorRecordForDetail } from "@/lib/server/instructor-record";
+import { InstructorDetailsClient } from "./instructor-details-client";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -14,13 +14,7 @@ export default async function InstructorDetailPage({ params }: Props) {
   if (!user) redirect("/");
 
   const { id } = await params;
-  const instructor = await prisma.instructor.findUnique({
-    where: { id },
-    include: {
-      groups: { include: { center: true } },
-      centers: true,
-    },
-  });
+  const instructor = await fetchInstructorRecordForDetail(id);
 
   if (!instructor) redirect("/dashboard/instructors");
 

@@ -66,7 +66,7 @@ export function Header({ title, backHref, backLabel }: HeaderProps) {
               </Link>
             </Button>
           )}
-          <h1 className="text-xl font-bold text-foreground">{title}</h1>
+          <h1 className="text-2xl font-bold text-foreground">{title}</h1>
         </div>
 
         <div className="flex items-center gap-1">
@@ -87,7 +87,7 @@ export function Header({ title, backHref, backLabel }: HeaderProps) {
                 <User className="size-4" />
               </AvatarFallback>
             </Avatar>
-            <span className="hidden text-sm font-medium md:block">
+            <span className="hidden text-base font-medium md:block">
               מנהל מערכת
             </span>
           </Button>
@@ -136,7 +136,7 @@ export function Header({ title, backHref, backLabel }: HeaderProps) {
             "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
             "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
           )}
-          overlayClassName="bg-black/60 backdrop-blur-[2px]"
+          overlayClassName="bg-foreground/45 backdrop-blur-[2px]"
         >
           <DialogHeader className="sr-only">
             <DialogTitle>הפתעה</DialogTitle>
@@ -152,7 +152,7 @@ export function Header({ title, backHref, backLabel }: HeaderProps) {
                 priority
               />
             </div>
-            <p className="mt-6 text-center text-lg font-medium leading-relaxed text-foreground">
+            <p className="mt-6 text-center text-xl font-medium leading-relaxed text-foreground">
               אוהב אותך אבא ❤️
             </p>
           </div>

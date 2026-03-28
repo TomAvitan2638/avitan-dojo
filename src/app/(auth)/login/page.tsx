@@ -3,7 +3,7 @@ import { LoginForm } from "./login-form";
 
 function LoginFallback() {
   return (
-    <div className="w-full max-w-md rounded-2xl border border-white/10 bg-zinc-950/50 p-12 text-center text-white/80 backdrop-blur-xl">
+    <div className="w-full max-w-md rounded-2xl border border-border bg-card/95 p-12 text-center text-base text-muted-foreground backdrop-blur-xl">
       טוען…
     </div>
   );

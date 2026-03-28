@@ -1,13 +1,47 @@
 import { prisma } from "@/lib/db";
-import { MembershipStatus } from "@prisma/client";
+import { MembershipStatus, StudentStatus } from "@prisma/client";
 import type { CurrentUser } from "@/lib/auth";
-import {
-  startOfDay,
-  addDays,
-  differenceInYears,
-  differenceInCalendarDays,
-  subMonths,
-} from "date-fns";
+import { startOfDay, subMonths } from "date-fns";
+
+/** Dashboard birthdays use Israel civil calendar, not server default (often UTC on Vercel). */
+const DOJO_TIME_ZONE = "Asia/Jerusalem";
+
+function getCalendarPartsInDojoTz(date: Date): {
+  year: number;
+  monthIndex: number;
+  day: number;
+} {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: DOJO_TIME_ZONE,
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  }).formatToParts(date);
+  let year = 0;
+  let monthIndex = 0;
+  let day = 0;
+  for (const p of parts) {
+    if (p.type === "year") year = Number(p.value);
+    else if (p.type === "month") monthIndex = Number(p.value) - 1;
+    else if (p.type === "day") day = Number(p.value);
+  }
+  return { year, monthIndex, day };
+}
+
+/** Gregorian civil day increment (y/m/d only; no clock / UTC “day” boundaries). */
+function addCivilDays(
+  year: number,
+  monthIndex: number,
+  day: number,
+  deltaDays: number
+): { year: number; monthIndex: number; day: number } {
+  const x = new Date(Date.UTC(year, monthIndex, day + deltaDays));
+  return {
+    year: x.getUTCFullYear(),
+    monthIndex: x.getUTCMonth(),
+    day: x.getUTCDate(),
+  };
+}
 
 export type BirthdayStudent = {
   id: string;
@@ -64,19 +98,19 @@ function buildStudentInstructorFilter(user: CurrentUser) {
 export async function getBirthdaysToday(
   user: CurrentUser
 ): Promise<BirthdayStudent[]> {
-  const today = startOfDay(new Date());
-  const month = today.getMonth() + 1;
-  const day = today.getDate();
+  const now = new Date();
+  const { monthIndex, day: todayDay } = getCalendarPartsInDojoTz(now);
 
   const whereClause =
     user.role === "INSTRUCTOR" && user.instructorId
       ? {
+          status: StudentStatus.active,
           birthDate: { not: null },
           memberships: {
             some: { group: { instructorId: user.instructorId } },
           },
         }
-      : { birthDate: { not: null } };
+      : { status: StudentStatus.active, birthDate: { not: null } };
 
   const students = await prisma.student.findMany({
     where: whereClause,
@@ -85,8 +119,8 @@ export async function getBirthdaysToday(
 
   const withBirthdayToday = students.filter((s) => {
     if (!s.birthDate) return false;
-    const bd = new Date(s.birthDate);
-    return bd.getMonth() + 1 === month && bd.getDate() === day;
+    const parts = getCalendarPartsInDojoTz(new Date(s.birthDate));
+    return parts.monthIndex === monthIndex && parts.day === todayDay;
   });
 
   const distinctById = Array.from(
@@ -115,18 +149,19 @@ export async function getBirthdaysToday(
 export async function getUpcomingBirthdays(
   user: CurrentUser
 ): Promise<UpcomingBirthdayStudent[]> {
-  const today = startOfDay(new Date());
-  const endDate = addDays(today, 7);
+  const now = new Date();
+  const today = getCalendarPartsInDojoTz(now);
 
   const whereClause =
     user.role === "INSTRUCTOR" && user.instructorId
       ? {
+          status: StudentStatus.active,
           birthDate: { not: null },
           memberships: {
             some: { group: { instructorId: user.instructorId } },
           },
         }
-      : { birthDate: { not: null } };
+      : { status: StudentStatus.active, birthDate: { not: null } };
 
   const students = await prisma.student.findMany({
     where: whereClause,
@@ -148,26 +183,32 @@ export async function getUpcomingBirthdays(
 
   for (const s of students) {
     if (!s.birthDate) continue;
-    const bd = new Date(s.birthDate);
-    const thisYearBd = new Date(today.getFullYear(), bd.getMonth(), bd.getDate());
-    const nextYearBd = new Date(
-      today.getFullYear() + 1,
-      bd.getMonth(),
-      bd.getDate()
-    );
+    const birthParts = getCalendarPartsInDojoTz(new Date(s.birthDate));
+    const bm = birthParts.monthIndex;
+    const birthDayOfMonth = birthParts.day;
+    const birthYear = birthParts.year;
 
-    // Next birthday is this year or next year
-    const nextBd =
-      thisYearBd >= today ? thisYearBd : nextYearBd;
-    const nextBdStart = startOfDay(nextBd);
+    let daysUntil: number | null = null;
+    let anniversaryYear: number | null = null;
 
-    if (nextBdStart > endDate) continue;
+    for (let delta = 0; delta <= 7; delta++) {
+      const c = addCivilDays(
+        today.year,
+        today.monthIndex,
+        today.day,
+        delta
+      );
+      if (c.monthIndex === bm && c.day === birthDayOfMonth) {
+        daysUntil = delta;
+        anniversaryYear = c.year;
+        break;
+      }
+    }
 
-    const daysUntil = differenceInCalendarDays(nextBdStart, today);
-    const isToday = daysUntil === 0;
-    const ageTurning = differenceInYears(nextBd, bd);
-    const groupName =
-      s.memberships[0]?.group?.name ?? null;
+    if (daysUntil === null || anniversaryYear === null) continue;
+
+    const ageTurning = anniversaryYear - birthYear;
+    const groupName = s.memberships[0]?.group?.name ?? null;
 
     results.push({
       id: s.id,
@@ -176,7 +217,7 @@ export async function getUpcomingBirthdays(
       birthDate: s.birthDate,
       ageTurning,
       groupName,
-      isToday,
+      isToday: daysUntil === 0,
       daysUntil,
     });
   }

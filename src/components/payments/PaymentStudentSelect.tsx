@@ -185,8 +185,8 @@ export function PaymentStudentSelect({
           }
         }}
         className={cn(
-          "flex h-9 w-full items-center justify-between gap-2 rounded-md border border-white/10 bg-zinc-800 px-3 py-1 text-sm text-white shadow-sm transition-colors",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-900",
+          "flex h-10 w-full items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2 text-base text-foreground shadow-sm transition-colors",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           selectDisabled && "cursor-not-allowed opacity-50"
         )}
       >
@@ -211,9 +211,9 @@ export function PaymentStudentSelect({
           id={`${id}-listbox`}
           role="listbox"
           aria-label="רשימת תלמידים"
-          className="absolute z-50 mt-1 w-full rounded-md border border-white/10 bg-zinc-800 shadow-lg"
+          className="absolute z-50 mt-1 w-full rounded-md border border-border bg-card shadow-lg"
         >
-          <div className="border-b border-white/10 p-2">
+          <div className="border-b border-border p-2">
             <input
               ref={searchRef}
               type="search"
@@ -225,7 +225,7 @@ export function PaymentStudentSelect({
               onKeyDown={handleSearchKeyDown}
               placeholder="חיפוש לפי שם או ת״ז..."
               className={cn(
-                "flex h-9 w-full rounded-md border border-white/10 bg-zinc-900 px-3 py-1 text-sm text-white shadow-sm",
+                "flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-base text-foreground shadow-sm",
                 "placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               )}
               dir="rtl"
@@ -234,7 +234,7 @@ export function PaymentStudentSelect({
           </div>
           <ul className="max-h-60 overflow-y-auto py-1">
             {filtered.length === 0 ? (
-              <li className="px-3 py-2 text-sm text-muted-foreground">לא נמצאו תוצאות</li>
+              <li className="px-3 py-2 text-base text-muted-foreground">לא נמצאו תוצאות</li>
             ) : (
               filtered.map((s, idx) => (
                 <li key={s.id} role="presentation">
@@ -243,8 +243,8 @@ export function PaymentStudentSelect({
                     role="option"
                     aria-selected={selectedId === s.id}
                     className={cn(
-                      "flex w-full flex-col gap-0.5 px-3 py-2 text-right text-sm text-white transition-colors hover:bg-white/10",
-                      highlighted === idx && "bg-white/10",
+                      "flex w-full flex-col gap-0.5 px-3 py-2 text-right text-base text-foreground transition-colors hover:bg-muted/60",
+                      highlighted === idx && "bg-muted/60",
                       selectedId === s.id && "font-medium"
                     )}
                     onMouseEnter={() => setHighlighted(idx)}

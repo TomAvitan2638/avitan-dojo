@@ -2,39 +2,39 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Karate Dojo Dark Theme */
+/* Avitan Dojo — warm light theme (senior readability) */
 :root {
-  --background: oklch(0.12 0.005 250);
-  --foreground: oklch(0.95 0 0);
-  --card: oklch(0.16 0.005 250);
-  --card-foreground: oklch(0.95 0 0);
-  --popover: oklch(0.18 0.005 250);
-  --popover-foreground: oklch(0.95 0 0);
-  --primary: oklch(0.55 0.22 25);
-  --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.22 0.005 250);
-  --secondary-foreground: oklch(0.95 0 0);
-  --muted: oklch(0.22 0.005 250);
-  --muted-foreground: oklch(0.65 0 0);
-  --accent: oklch(0.75 0.12 85);
-  --accent-foreground: oklch(0.12 0.005 250);
-  --destructive: oklch(0.55 0.22 25);
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.25 0.005 250);
-  --input: oklch(0.20 0.005 250);
-  --ring: oklch(0.55 0.22 25);
+  --background: #f7f3e8;
+  --foreground: #1c1917;
+  --card: #fbf8f1;
+  --card-foreground: #1c1917;
+  --popover: #fffdf8;
+  --popover-foreground: #1c1917;
+  --primary: #b91c1c;
+  --primary-foreground: #fffaf5;
+  --secondary: #ebe4d4;
+  --secondary-foreground: #1c1917;
+  --muted: #ebe4d4;
+  --muted-foreground: #57534e;
+  --accent: #c9a227;
+  --accent-foreground: #292524;
+  --destructive: #b91c1c;
+  --destructive-foreground: #fffaf5;
+  --border: #d6cdc0;
+  --input: #ebe4d4;
+  --ring: #b91c1c;
   --radius: 0.75rem;
-  --sidebar: oklch(0.10 0.005 250);
-  --sidebar-foreground: oklch(0.95 0 0);
-  --sidebar-primary: oklch(0.55 0.22 25);
-  --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.18 0.005 250);
-  --sidebar-accent-foreground: oklch(0.95 0 0);
-  --sidebar-border: oklch(0.22 0.005 250);
-  --sidebar-ring: oklch(0.55 0.22 25);
-  --dojo-red: oklch(0.55 0.22 25);
-  --dojo-gold: oklch(0.75 0.12 85);
-  --dojo-dark: oklch(0.08 0.005 250);
+  --sidebar: #f2ece1;
+  --sidebar-foreground: #1c1917;
+  --sidebar-primary: #b91c1c;
+  --sidebar-primary-foreground: #fffaf5;
+  --sidebar-accent: #e8e0d0;
+  --sidebar-accent-foreground: #1c1917;
+  --sidebar-border: #d6cdc0;
+  --sidebar-ring: #b91c1c;
+  --dojo-red: #b91c1c;
+  --dojo-gold: #c9a227;
+  --dojo-dark: #1c1917;
 }
 
 @layer base {
@@ -58,14 +58,14 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: oklch(0.12 0.005 250);
+  background: var(--background);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: oklch(0.25 0.005 250);
+  background: var(--border);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: oklch(0.35 0.005 250);
+  background: #b8a994;
 }

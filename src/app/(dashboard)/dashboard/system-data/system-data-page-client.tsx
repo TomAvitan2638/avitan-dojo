@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { useFormState, useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,11 +23,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Pencil, Loader2, CheckCircle } from "lucide-react";
+import { Plus, Pencil, Loader2 } from "lucide-react";
 import { createSportsEquipment } from "@/server/actions/create-sports-equipment";
 import { updateSportsEquipment } from "@/server/actions/update-sports-equipment";
 import { createExam } from "@/server/actions/create-exam";
 import { updateExam } from "@/server/actions/update-exam";
+import {
+  RECORD_DIALOG_AUTOCLOSE_MS,
+  RecordDialogBodyLock,
+  RecordDialogCancelButton,
+  RecordDialogPrimarySubmitButton,
+  RecordDialogSaveTailBanners,
+  recordDialogBlockDismiss,
+  useRecordDialogPostSavePhase,
+  useWrappedFormState,
+} from "@/components/record-dialog/record-dialog-save-ux";
 
 type SystemDataRow = {
   id: string;
@@ -42,46 +51,6 @@ type Props = {
   exams: SystemDataRow[];
 };
 
-function CreateSportsEquipmentSubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button
-      type="submit"
-      className="bg-dojo-red hover:bg-dojo-red/90"
-      disabled={pending}
-    >
-      {pending ? (
-        <>
-          <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-          שומר...
-        </>
-      ) : (
-        "שמירה"
-      )}
-    </Button>
-  );
-}
-
-function CreateExamSubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button
-      type="submit"
-      className="bg-dojo-red hover:bg-dojo-red/90"
-      disabled={pending}
-    >
-      {pending ? (
-        <>
-          <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-          שומר...
-        </>
-      ) : (
-        "שמירה"
-      )}
-    </Button>
-  );
-}
-
 export function SystemDataPageClient({
   sportsEquipment,
   exams,
@@ -90,15 +59,30 @@ export function SystemDataPageClient({
   const [isPending, startTransition] = useTransition();
   const [sportsAddOpen, setSportsAddOpen] = useState(false);
   const [examAddOpen, setExamAddOpen] = useState(false);
-  const [sportsState, sportsFormAction] = useFormState(
-    createSportsEquipment,
-    null
-  );
-  const [examState, examFormAction] = useFormState(createExam, null);
   const sportsSuccessHandledRef = useRef(false);
   const examSuccessHandledRef = useRef(false);
-  const [sportsPhase, setSportsPhase] = useState<"idle" | "refreshing" | "success">("idle");
-  const [examPhase, setExamPhase] = useState<"idle" | "refreshing" | "success">("idle");
+  const {
+    state: sportsState,
+    formAction: sportsFormAction,
+    submitBusy: sportsSubmitBusy,
+  } = useWrappedFormState(createSportsEquipment, null);
+  const {
+    state: examState,
+    formAction: examFormAction,
+    submitBusy: examSubmitBusy,
+  } = useWrappedFormState(createExam, null);
+  const { tailPhase: sportsPhase } = useRecordDialogPostSavePhase({
+    success: sportsState?.success,
+    isOpen: sportsAddOpen,
+    handledRef: sportsSuccessHandledRef,
+    onAutoClose: () => setSportsAddOpen(false),
+  });
+  const { tailPhase: examPhase } = useRecordDialogPostSavePhase({
+    success: examState?.success,
+    isOpen: examAddOpen,
+    handledRef: examSuccessHandledRef,
+    onAutoClose: () => setExamAddOpen(false),
+  });
 
   const [editSports, setEditSports] = useState<SystemDataRow | null>(null);
   const [editExam, setEditExam] = useState<SystemDataRow | null>(null);
@@ -107,52 +91,6 @@ export function SystemDataPageClient({
   const [editPending, setEditPending] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [editPhase, setEditPhase] = useState<"idle" | "refreshing" | "success">("idle");
-
-  useEffect(() => {
-    if (sportsState?.success && sportsAddOpen && !sportsSuccessHandledRef.current) {
-      sportsSuccessHandledRef.current = true;
-      setSportsPhase("refreshing");
-      startTransition(() => router.refresh());
-    }
-  }, [sportsState?.success, sportsAddOpen, router]);
-
-  useEffect(() => {
-    if (sportsPhase === "refreshing" && !isPending) setSportsPhase("success");
-  }, [sportsPhase, isPending]);
-
-  useEffect(() => {
-    if (sportsPhase === "success") {
-      const t = setTimeout(() => {
-        setSportsAddOpen(false);
-        setSportsPhase("idle");
-        sportsSuccessHandledRef.current = false;
-      }, 1200);
-      return () => clearTimeout(t);
-    }
-  }, [sportsPhase]);
-
-  useEffect(() => {
-    if (examState?.success && examAddOpen && !examSuccessHandledRef.current) {
-      examSuccessHandledRef.current = true;
-      setExamPhase("refreshing");
-      startTransition(() => router.refresh());
-    }
-  }, [examState?.success, examAddOpen, router]);
-
-  useEffect(() => {
-    if (examPhase === "refreshing" && !isPending) setExamPhase("success");
-  }, [examPhase, isPending]);
-
-  useEffect(() => {
-    if (examPhase === "success") {
-      const t = setTimeout(() => {
-        setExamAddOpen(false);
-        setExamPhase("idle");
-        examSuccessHandledRef.current = false;
-      }, 1200);
-      return () => clearTimeout(t);
-    }
-  }, [examPhase]);
 
   const handleEditSports = (row: SystemDataRow) => {
     setEditSports(row);
@@ -180,7 +118,7 @@ export function SystemDataPageClient({
         setEditSports(null);
         setEditExam(null);
         setEditPhase("idle");
-      }, 1200);
+      }, RECORD_DIALOG_AUTOCLOSE_MS);
       return () => clearTimeout(t);
     }
   }, [editPhase]);
@@ -221,18 +159,15 @@ export function SystemDataPageClient({
 
   return (
     <div className="space-y-8">
-      <Card className="border-white/10 bg-zinc-800">
+      <Card className="border-border bg-card">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-white">ציוד ספורט</CardTitle>
+          <CardTitle className="text-foreground">ציוד ספורט</CardTitle>
           <Dialog
             open={sportsAddOpen}
             onOpenChange={(open) => {
-              if (!open && sportsPhase === "refreshing") return;
+              if (!open && recordDialogBlockDismiss(sportsPhase, sportsSubmitBusy))
+                return;
               setSportsAddOpen(open);
-              if (!open) {
-                setSportsPhase("idle");
-                sportsSuccessHandledRef.current = false;
-              }
             }}
           >
             <DialogTrigger asChild>
@@ -241,9 +176,9 @@ export function SystemDataPageClient({
                 הוספה
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md bg-zinc-900 border-white/10">
+            <DialogContent className="sm:max-w-md bg-card border-border">
               <DialogHeader>
-                <DialogTitle className="text-white">
+                <DialogTitle className="text-foreground">
                   הוספת ציוד ספורט
                 </DialogTitle>
                 <DialogDescription className="text-muted-foreground">
@@ -251,45 +186,30 @@ export function SystemDataPageClient({
                 </DialogDescription>
               </DialogHeader>
               <form action={sportsFormAction} className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="sports-description">תיאור</Label>
-                  <Input
-                    id="sports-description"
-                    name="description"
-                    placeholder="תיאור הפריט"
-                    required
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="sports-amount">סכום ברירת מחדל (₪)</Label>
-                  <Input
-                    id="sports-amount"
-                    name="amount"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0"
-                    required
-                  />
-                </div>
-                {sportsPhase === "refreshing" && (
-                  <div
-                    className="flex items-center gap-2 rounded-md border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm text-blue-600 dark:text-blue-400"
-                    role="status"
-                  >
-                    <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
-                    מעדכן נתונים...
+                <RecordDialogBodyLock tailPhase={sportsPhase}>
+                  <div className="grid gap-2">
+                    <Label htmlFor="sports-description">תיאור</Label>
+                    <Input
+                      id="sports-description"
+                      name="description"
+                      placeholder="תיאור הפריט"
+                      required
+                    />
                   </div>
-                )}
-                {sportsPhase === "success" && (
-                  <div
-                    className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-600 dark:text-green-400"
-                    role="status"
-                  >
-                    <CheckCircle className="h-5 w-5 shrink-0" />
-                    הרשומה נשמרה בהצלחה
+                  <div className="grid gap-2">
+                    <Label htmlFor="sports-amount">סכום ברירת מחדל (₪)</Label>
+                    <Input
+                      id="sports-amount"
+                      name="amount"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0"
+                      required
+                    />
                   </div>
-                )}
+                </RecordDialogBodyLock>
+                <RecordDialogSaveTailBanners phase={sportsPhase} />
                 {sportsState?.error && (
                   <p className="text-sm text-destructive" role="alert">
                     {sportsState.error}
@@ -298,14 +218,10 @@ export function SystemDataPageClient({
                 <div className="flex justify-start gap-2">
                   {sportsPhase === "idle" && (
                     <>
-                      <CreateSportsEquipmentSubmitButton />
-                      <Button
-                        type="button"
-                        variant="outline"
+                      <RecordDialogPrimarySubmitButton />
+                      <RecordDialogCancelButton
                         onClick={() => setSportsAddOpen(false)}
-                      >
-                        ביטול
-                      </Button>
+                      />
                     </>
                   )}
                 </div>
@@ -316,7 +232,7 @@ export function SystemDataPageClient({
         <CardContent>
           <Table>
             <TableHeader>
-              <TableRow className="border-white/10 hover:bg-transparent">
+              <TableRow className="border-border hover:bg-transparent">
                 <TableHead className="text-right text-muted-foreground">
                   קוד
                 </TableHead>
@@ -333,7 +249,7 @@ export function SystemDataPageClient({
             </TableHeader>
             <TableBody>
               {sportsEquipment.length === 0 ? (
-                <TableRow className="border-white/5">
+                <TableRow className="border-border/50">
                   <TableCell
                     colSpan={4}
                     className="py-8 text-center text-muted-foreground"
@@ -345,22 +261,22 @@ export function SystemDataPageClient({
                 sportsEquipment.map((row) => (
                   <TableRow
                     key={row.id}
-                    className="border-white/5 hover:bg-white/[0.04]"
+                    className="border-border/50 hover:bg-muted/40"
                   >
-                    <TableCell className="font-medium text-white font-mono">
+                    <TableCell className="font-medium text-foreground font-mono">
                       {row.code}
                     </TableCell>
-                    <TableCell className="text-white">
+                    <TableCell className="text-foreground">
                       {row.description}
                     </TableCell>
-                    <TableCell className="text-white">
+                    <TableCell className="text-foreground">
                       ₪{row.amount.toFixed(2)}
                     </TableCell>
                     <TableCell>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-muted-foreground hover:text-white"
+                        className="text-muted-foreground hover:text-foreground"
                         onClick={() => handleEditSports(row)}
                       >
                         <Pencil className="h-4 w-4" />
@@ -374,18 +290,14 @@ export function SystemDataPageClient({
         </CardContent>
       </Card>
 
-      <Card className="border-white/10 bg-zinc-800">
+      <Card className="border-border bg-card">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-white">מבחנים</CardTitle>
+          <CardTitle className="text-foreground">מבחנים</CardTitle>
           <Dialog
             open={examAddOpen}
             onOpenChange={(open) => {
-              if (!open && examPhase === "refreshing") return;
+              if (!open && recordDialogBlockDismiss(examPhase, examSubmitBusy)) return;
               setExamAddOpen(open);
-              if (!open) {
-                setExamPhase("idle");
-                examSuccessHandledRef.current = false;
-              }
             }}
           >
             <DialogTrigger asChild>
@@ -394,9 +306,9 @@ export function SystemDataPageClient({
                 הוספה
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md bg-zinc-900 border-white/10">
+            <DialogContent className="sm:max-w-md bg-card border-border">
               <DialogHeader>
-                <DialogTitle className="text-white">
+                <DialogTitle className="text-foreground">
                   הוספת מבחן
                 </DialogTitle>
                 <DialogDescription className="text-muted-foreground">
@@ -404,45 +316,30 @@ export function SystemDataPageClient({
                 </DialogDescription>
               </DialogHeader>
               <form action={examFormAction} className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="exam-description">תיאור</Label>
-                  <Input
-                    id="exam-description"
-                    name="description"
-                    placeholder="תיאור המבחן"
-                    required
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="exam-amount">סכום ברירת מחדל (₪)</Label>
-                  <Input
-                    id="exam-amount"
-                    name="amount"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0"
-                    required
-                  />
-                </div>
-                {examPhase === "refreshing" && (
-                  <div
-                    className="flex items-center gap-2 rounded-md border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm text-blue-600 dark:text-blue-400"
-                    role="status"
-                  >
-                    <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
-                    מעדכן נתונים...
+                <RecordDialogBodyLock tailPhase={examPhase}>
+                  <div className="grid gap-2">
+                    <Label htmlFor="exam-description">תיאור</Label>
+                    <Input
+                      id="exam-description"
+                      name="description"
+                      placeholder="תיאור המבחן"
+                      required
+                    />
                   </div>
-                )}
-                {examPhase === "success" && (
-                  <div
-                    className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-600 dark:text-green-400"
-                    role="status"
-                  >
-                    <CheckCircle className="h-5 w-5 shrink-0" />
-                    הרשומה נשמרה בהצלחה
+                  <div className="grid gap-2">
+                    <Label htmlFor="exam-amount">סכום ברירת מחדל (₪)</Label>
+                    <Input
+                      id="exam-amount"
+                      name="amount"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0"
+                      required
+                    />
                   </div>
-                )}
+                </RecordDialogBodyLock>
+                <RecordDialogSaveTailBanners phase={examPhase} />
                 {examState?.error && (
                   <p className="text-sm text-destructive" role="alert">
                     {examState.error}
@@ -451,14 +348,10 @@ export function SystemDataPageClient({
                 <div className="flex justify-start gap-2">
                   {examPhase === "idle" && (
                     <>
-                      <CreateExamSubmitButton />
-                      <Button
-                        type="button"
-                        variant="outline"
+                      <RecordDialogPrimarySubmitButton />
+                      <RecordDialogCancelButton
                         onClick={() => setExamAddOpen(false)}
-                      >
-                        ביטול
-                      </Button>
+                      />
                     </>
                   )}
                 </div>
@@ -469,7 +362,7 @@ export function SystemDataPageClient({
         <CardContent>
           <Table>
             <TableHeader>
-              <TableRow className="border-white/10 hover:bg-transparent">
+              <TableRow className="border-border hover:bg-transparent">
                 <TableHead className="text-right text-muted-foreground">
                   קוד
                 </TableHead>
@@ -486,7 +379,7 @@ export function SystemDataPageClient({
             </TableHeader>
             <TableBody>
               {exams.length === 0 ? (
-                <TableRow className="border-white/5">
+                <TableRow className="border-border/50">
                   <TableCell
                     colSpan={4}
                     className="py-8 text-center text-muted-foreground"
@@ -498,22 +391,22 @@ export function SystemDataPageClient({
                 exams.map((row) => (
                   <TableRow
                     key={row.id}
-                    className="border-white/5 hover:bg-white/[0.04]"
+                    className="border-border/50 hover:bg-muted/40"
                   >
-                    <TableCell className="font-medium text-white font-mono">
+                    <TableCell className="font-medium text-foreground font-mono">
                       {row.code}
                     </TableCell>
-                    <TableCell className="text-white">
+                    <TableCell className="text-foreground">
                       {row.description}
                     </TableCell>
-                    <TableCell className="text-white">
+                    <TableCell className="text-foreground">
                       ₪{row.amount.toFixed(2)}
                     </TableCell>
                     <TableCell>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-muted-foreground hover:text-white"
+                        className="text-muted-foreground hover:text-foreground"
                         onClick={() => handleEditExam(row)}
                       >
                         <Pencil className="h-4 w-4" />
@@ -534,74 +427,53 @@ export function SystemDataPageClient({
           if (!open) handleEditClose();
         }}
       >
-        <DialogContent className="sm:max-w-md bg-zinc-900 border-white/10">
+        <DialogContent className="sm:max-w-md bg-card border-border">
           <DialogHeader>
-            <DialogTitle className="text-white">
+            <DialogTitle className="text-foreground">
               עריכת {editSports ? "ציוד ספורט" : "מבחן"}
             </DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              {editPhase === "refreshing"
-                ? "מעדכן נתונים..."
-                : editPhase === "success"
-                  ? "הרשומה נשמרה בהצלחה"
-                  : "הקוד אינו ניתן לעריכה. ניתן לערוך תיאור וסכום."}
+              הקוד אינו ניתן לעריכה. ניתן לערוך תיאור וסכום.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            {editPhase === "refreshing" ? (
-              <div
-                className="flex items-center gap-2 rounded-md border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm text-blue-600 dark:text-blue-400"
-                role="status"
-              >
-                <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
-                מעדכן נתונים...
-              </div>
-            ) : editPhase === "success" ? (
-              <div className="flex flex-col gap-4">
-                <div
-                  className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-600 dark:text-green-400"
-                  role="status"
-                >
-                  <CheckCircle className="h-5 w-5 shrink-0" />
-                  הרשומה נשמרה בהצלחה
-                </div>
-                <div className="flex justify-end">
-                  <Button variant="outline" onClick={handleEditClose}>
-                    סגור
-                  </Button>
-                </div>
-              </div>
-            ) : (
+            <RecordDialogSaveTailBanners phase={editPhase} />
+            {editPhase === "idle" && (
               <>
-                <div className="grid gap-2">
-                  <Label>קוד</Label>
-                  <Input
-                    value={editSports?.code ?? editExam?.code ?? ""}
-                    readOnly
-                    disabled
-                    className="font-mono text-muted-foreground opacity-90"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-description">תיאור</Label>
-                  <Input
-                    id="edit-description"
-                    value={editDescription}
-                    onChange={(e) => setEditDescription(e.target.value)}
-                    placeholder="תיאור"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-amount">סכום ברירת מחדל (₪)</Label>
-                  <Input
-                    id="edit-amount"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={editAmount}
-                    onChange={(e) => setEditAmount(e.target.value)}
-                  />
-                </div>
+                <fieldset
+                  disabled={editPending}
+                  className="min-w-0 border-0 p-0 disabled:pointer-events-none disabled:opacity-60"
+                >
+                  <div className="grid gap-2">
+                    <Label>קוד</Label>
+                    <Input
+                      value={editSports?.code ?? editExam?.code ?? ""}
+                      readOnly
+                      disabled
+                      className="font-mono text-muted-foreground opacity-90"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-description">תיאור</Label>
+                    <Input
+                      id="edit-description"
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      placeholder="תיאור"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-amount">סכום ברירת מחדל (₪)</Label>
+                    <Input
+                      id="edit-amount"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={editAmount}
+                      onChange={(e) => setEditAmount(e.target.value)}
+                    />
+                  </div>
+                </fieldset>
                 {editError && (
                   <p className="text-sm text-destructive" role="alert">
                     {editError}
@@ -622,7 +494,11 @@ export function SystemDataPageClient({
                       "שמירה"
                     )}
                   </Button>
-                  <Button variant="outline" onClick={handleEditClose}>
+                  <Button
+                    variant="outline"
+                    onClick={handleEditClose}
+                    disabled={editPending}
+                  >
                     ביטול
                   </Button>
                 </div>

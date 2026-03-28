@@ -79,7 +79,7 @@ export default function ResetPasswordPage() {
   if (!sessionReady) {
     return (
       <AuthCard title="סיסמה חדשה" subtitle="מאמתים את הקישור…">
-        <div className="py-8 text-center text-white/70">טוען…</div>
+        <div className="py-8 text-center text-base text-muted-foreground">טוען…</div>
       </AuthCard>
     );
   }
@@ -114,7 +114,7 @@ export default function ResetPasswordPage() {
 
         {formError ? (
           <p
-            className="rounded-lg bg-red-950/50 px-3 py-2 text-center text-sm text-red-200"
+            className="rounded-lg bg-destructive/10 px-3 py-2 text-center text-base text-destructive"
             role="alert"
           >
             {formError}

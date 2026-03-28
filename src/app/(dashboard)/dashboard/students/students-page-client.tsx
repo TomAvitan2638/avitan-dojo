@@ -1,9 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { useTransition } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,7 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Search, Users, Loader2, User, CheckCircle } from "lucide-react";
+import { Loader2, Plus, Search, Users, User } from "lucide-react";
 import { createStudent } from "@/server/actions/create-student";
 import { getStudentForModal } from "@/server/actions/get-student-for-modal";
 import { StudentImageUpload } from "@/components/students/student-image-upload";
@@ -40,10 +38,22 @@ import {
   filterStudentListRows,
   type StudentListRow,
 } from "@/lib/student-list-filter";
-
-type CenterOption = { id: string; name: string };
-type GroupOption = { id: string; name: string; centerId: string };
-type BeltOption = { id: string; name: string };
+import {
+  RecordDialogBodyLock,
+  RecordDialogCancelButton,
+  RecordDialogPrimarySubmitButton,
+  RecordDialogSaveTailBanners,
+  recordDialogBlockDismiss,
+  useRecordDialogPostSavePhase,
+  useWrappedFormState,
+} from "@/components/record-dialog/record-dialog-save-ux";
+import { useStudentsPageQuery } from "@/hooks/use-students-page-query";
+import type { StudentsPageQueryScope } from "@/types/students-page";
+import { invalidateStudentsPageQueries } from "@/lib/students-page-query";
+import {
+  ListLoadingBanner,
+  StudentsListSkeletonDualSections,
+} from "@/components/dashboard/dashboard-loading-skeleton";
 
 type SortColumn =
   | "identifier"
@@ -56,32 +66,8 @@ type SortColumn =
 type SortDirection = "asc" | "desc";
 
 type Props = {
-  students: StudentListRow[];
-  centers: CenterOption[];
-  groups: GroupOption[];
-  beltLevels: BeltOption[];
-  totalStudents: number;
+  queryScope: StudentsPageQueryScope;
 };
-
-function CreateStudentSubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button
-      type="submit"
-      className="bg-dojo-red hover:bg-dojo-red/90"
-      disabled={pending}
-    >
-      {pending ? (
-        <>
-          <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-          שומר...
-        </>
-      ) : (
-        "שמירה"
-      )}
-    </Button>
-  );
-}
 
 function toTimestamp(d: Date | string | null | undefined): number {
   if (d == null) return 0;
@@ -90,20 +76,72 @@ function toTimestamp(d: Date | string | null | undefined): number {
   return Number.isNaN(ts) ? 0 : ts;
 }
 
-export function StudentsPageClient({
-  students,
-  centers,
-  groups,
-  beltLevels,
-  totalStudents,
-}: Props) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+function StudentsListSkeleton() {
+  return (
+    <div
+      className="mt-1 space-y-6"
+      role="status"
+      aria-busy="true"
+      aria-label="טוען טבלת תלמידים"
+    >
+      <div className="space-y-3">
+        <div className="h-5 w-40 animate-pulse rounded bg-muted/50" />
+        <Card className="overflow-hidden border-border/50 bg-card">
+          <CardContent className="space-y-3 p-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div
+                key={i}
+                className="h-12 animate-pulse rounded-md bg-muted/30"
+              />
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+      <div className="space-y-3">
+        <div className="h-5 w-48 animate-pulse rounded bg-muted/50" />
+        <Card className="overflow-hidden border-border/50 bg-card">
+          <CardContent className="space-y-3 p-4">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="h-12 animate-pulse rounded-md bg-muted/30"
+              />
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+export function StudentsPageClient({ queryScope }: Props) {
+  const queryClient = useQueryClient();
+  const {
+    data,
+    isError,
+    error,
+    refetch,
+    isPending,
+  } = useStudentsPageQuery({ scope: queryScope });
+
+  const syncStudentsCache = useCallback(async () => {
+    await invalidateStudentsPageQueries(queryClient);
+  }, [queryClient]);
+
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedCenterId, setSelectedCenterId] = useState("");
-  const [state, formAction] = useFormState(createStudent, null);
   const createSuccessHandledRef = useRef(false);
-  const [createPhase, setCreatePhase] = useState<"idle" | "refreshing" | "success">("idle");
+  const { state, formAction, submitBusy } = useWrappedFormState(createStudent, null);
+  const { tailPhase: createPhase } = useRecordDialogPostSavePhase({
+    success: state?.success,
+    isOpen: isAddDialogOpen,
+    handledRef: createSuccessHandledRef,
+    onAutoClose: () => {
+      setIsAddDialogOpen(false);
+      setSelectedCenterId("");
+    },
+    syncOnSuccess: syncStudentsCache,
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const [modalStudent, setModalStudent] = useState<StudentForModal | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -113,10 +151,12 @@ export function StudentsPageClient({
   const [sortColumn, setSortColumn] = useState<SortColumn>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
-  const filteredStudents = useMemo(
-    () => filterStudentListRows(students, searchQuery),
-    [students, searchQuery]
-  );
+  const loadingWithoutData = isPending && !data;
+
+  const filteredStudents = useMemo(() => {
+    if (!data) return [] as StudentListRow[];
+    return filterStudentListRows(data.students, searchQuery);
+  }, [data, searchQuery]);
 
   /** `Student.status === "active"` vs all other enum values — same badge logic as the table. */
   const activeStudents = useMemo(
@@ -175,33 +215,10 @@ export function StudentsPageClient({
   const sortedActive = useMemo(() => sortRows(activeStudents), [activeStudents, sortRows]);
   const sortedInactive = useMemo(() => sortRows(inactiveStudents), [inactiveStudents, sortRows]);
 
-  const filteredGroups = selectedCenterId
-    ? groups.filter((g) => g.centerId === selectedCenterId)
-    : [];
-
-  useEffect(() => {
-    if (state?.success && isAddDialogOpen && !createSuccessHandledRef.current) {
-      createSuccessHandledRef.current = true;
-      setCreatePhase("refreshing");
-      startTransition(() => router.refresh());
-    }
-  }, [state?.success, isAddDialogOpen, router]);
-
-  useEffect(() => {
-    if (createPhase === "refreshing" && !isPending) setCreatePhase("success");
-  }, [createPhase, isPending]);
-
-  useEffect(() => {
-    if (createPhase === "success") {
-      const t = setTimeout(() => {
-        setIsAddDialogOpen(false);
-        setSelectedCenterId("");
-        setCreatePhase("idle");
-        createSuccessHandledRef.current = false;
-      }, 1200);
-      return () => clearTimeout(t);
-    }
-  }, [createPhase]);
+  const filteredGroups = useMemo(() => {
+    if (!data || !selectedCenterId) return [];
+    return data.groups.filter((g) => g.centerId === selectedCenterId);
+  }, [data, selectedCenterId]);
 
   useEffect(() => {
     if (isAddDialogOpen) setSelectedCenterId("");
@@ -241,7 +258,6 @@ export function StudentsPageClient({
   };
 
   const handleModalSaveSuccess = async () => {
-    router.refresh();
     if (modalStudent?.id) {
       const r = await getStudentForModal(modalStudent.id);
       if (r.ok) setModalStudent(r.student);
@@ -277,7 +293,7 @@ export function StudentsPageClient({
     rows.map((student) => (
       <TableRow
         key={student.id}
-        className="cursor-pointer border-b border-white/5 transition-colors duration-150 hover:bg-white/[0.04]"
+        className="cursor-pointer border-b border-border/50 transition-colors duration-150 hover:bg-muted/40"
         onClick={() => openModalForStudent(student.id)}
       >
         <TableCell
@@ -327,7 +343,7 @@ export function StudentsPageClient({
           ) : (
             <Badge
               variant="secondary"
-              className="border-0 bg-white/5 text-muted-foreground font-normal"
+              className="border-0 bg-muted/50 text-muted-foreground font-normal"
             >
               לא פעיל
             </Badge>
@@ -362,7 +378,7 @@ export function StudentsPageClient({
 
   const tableHeader = (
     <TableHeader>
-      <TableRow className="border-b border-white/10 hover:bg-transparent">
+      <TableRow className="border-b border-border hover:bg-transparent">
         <TableHead className="w-[52px] min-w-[52px] max-w-[52px] py-3.5 px-2 text-right align-middle" aria-hidden />
         <SortHeader column="identifier" label="ת״ז" />
         <SortHeader column="name" label="שם מלא" />
@@ -376,7 +392,77 @@ export function StudentsPageClient({
   );
 
   const listIsEmpty = filteredStudents.length === 0;
+  const totalStudents = data?.totalStudents ?? 0;
   const noStudentsAtAll = totalStudents === 0;
+
+  if (isError && !data) {
+    return (
+      <div className="space-y-4">
+        <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative flex-1 sm:max-w-xs">
+            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <Input
+              type="search"
+              disabled
+              placeholder="חיפוש תלמיד..."
+              className="bg-secondary pr-10"
+              aria-label="חיפוש תלמידים"
+            />
+          </div>
+          <Button type="button" disabled className="bg-dojo-red/50">
+            <Plus className="ml-2 h-4 w-4" />
+            הוספת תלמיד
+          </Button>
+        </div>
+        <Card className="border-destructive/30 bg-card">
+          <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
+            <p className="text-sm text-destructive" role="alert">
+              {error instanceof Error ? error.message : "שגיאה בטעינת התלמידים"}
+            </p>
+            <Button type="button" variant="outline" onClick={() => refetch()}>
+              נסה שוב
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (loadingWithoutData) {
+    return (
+      <>
+        <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative flex-1 sm:max-w-xs">
+            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <Input
+              type="search"
+              disabled
+              placeholder="טוען..."
+              className="bg-secondary pr-10"
+              aria-label="חיפוש תלמידים"
+            />
+          </div>
+          <Button type="button" disabled className="bg-dojo-red/50">
+            <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+            הוספת תלמיד
+          </Button>
+        </div>
+        <div className="space-y-6">
+          <ListLoadingBanner
+            title="טוען נתוני תלמידים..."
+            subtitle="אנא המתן — טוענים רשימת תלמידים מהשרת"
+          />
+          <StudentsListSkeletonDualSections />
+        </div>
+      </>
+    );
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  const { centers, groups, beltLevels } = data;
 
   return (
     <>
@@ -395,12 +481,8 @@ export function StudentsPageClient({
         <Dialog
           open={isAddDialogOpen}
           onOpenChange={(open) => {
-            if (!open && createPhase === "refreshing") return;
+            if (!open && recordDialogBlockDismiss(createPhase, submitBusy)) return;
             setIsAddDialogOpen(open);
-            if (!open) {
-              setCreatePhase("idle");
-              createSuccessHandledRef.current = false;
-            }
           }}
         >
           <DialogTrigger asChild>
@@ -422,6 +504,10 @@ export function StudentsPageClient({
                 </DialogHeader>
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+                <RecordDialogBodyLock
+                  tailPhase={createPhase}
+                  className="min-h-0"
+                >
                 <div className="grid gap-4">
                   <StudentImageUpload />
               <div className="grid gap-2">
@@ -692,26 +778,13 @@ export function StudentsPageClient({
                 </Label>
               </div>
                 </div>
+                </RecordDialogBodyLock>
               </div>
               <div className="shrink-0 space-y-3 border-t border-border/70 bg-background px-6 py-4">
-                {createPhase === "refreshing" && (
-                  <div
-                    className="flex flex-row-reverse items-center gap-2 rounded-md border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm text-blue-600 dark:text-blue-400"
-                    role="status"
-                  >
-                    <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
-                    מעדכן נתונים...
-                  </div>
-                )}
-                {createPhase === "success" && (
-                  <div
-                    className="flex flex-row-reverse items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-600 dark:text-green-400"
-                    role="status"
-                  >
-                    <CheckCircle className="h-5 w-5 shrink-0" />
-                    הרשומה נשמרה בהצלחה
-                  </div>
-                )}
+                <RecordDialogSaveTailBanners
+                  phase={createPhase}
+                  bannerClassName="flex-row-reverse"
+                />
                 {state?.error && (
                   <p className="text-sm text-destructive" role="alert">
                     {state.error}
@@ -720,14 +793,10 @@ export function StudentsPageClient({
                 <div className="flex justify-start gap-2">
                   {createPhase === "idle" && (
                     <>
-                      <CreateStudentSubmitButton />
-                      <Button
-                        type="button"
-                        variant="outline"
+                      <RecordDialogPrimarySubmitButton />
+                      <RecordDialogCancelButton
                         onClick={() => setIsAddDialogOpen(false)}
-                      >
-                        ביטול
-                      </Button>
+                      />
                     </>
                   )}
                 </div>

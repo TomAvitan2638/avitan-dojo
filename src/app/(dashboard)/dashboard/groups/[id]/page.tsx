@@ -1,10 +1,8 @@
 import { redirect } from "next/navigation";
 import { Header } from "@/components/dashboard/header";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { fetchGroupRecordForDetail } from "@/lib/server/group-record";
 import { GroupDetailsClient } from "./group-details-client";
-import { TRAINING_DAY_LABELS } from "@/lib/training-days";
-import { format } from "date-fns";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -15,25 +13,11 @@ export default async function GroupDetailPage({ params }: Props) {
   if (!user) redirect("/");
 
   const { id } = await params;
-  const group = await prisma.group.findUnique({
-    where: { id },
-    include: {
-      center: true,
-      instructor: true,
-      schedules: { orderBy: { trainingDay: "asc" } },
-    },
-  });
+  const detail = await fetchGroupRecordForDetail(id);
 
-  if (!group) redirect("/dashboard/groups");
+  if (!detail) redirect("/dashboard/groups");
 
-  const studentsCount = await prisma.studentMembership.count({
-    where: { groupId: id, status: "active" },
-  });
-
-  const scheduleSummary = group.schedules.map((s) => ({
-    day: TRAINING_DAY_LABELS[s.trainingDay],
-    time: `${format(s.startTime, "HH:mm")}-${format(s.endTime, "HH:mm")}`,
-  }));
+  const { group, studentsCount, scheduleSummary } = detail;
 
   return (
     <div className="min-h-screen">

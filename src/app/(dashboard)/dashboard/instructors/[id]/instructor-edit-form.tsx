@@ -1,11 +1,16 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useFormState, useFormStatus } from "react-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { updateInstructor } from "@/server/actions/update-instructor";
+import { invalidateInstructorsPageQueries } from "@/lib/instructors-page-query";
+import { notifyDataWrite } from "@/lib/data-write-bus";
 import { InstructorImageUpload } from "@/components/instructors/instructor-image-upload";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
@@ -46,13 +51,42 @@ type InstructorFormData = {
 
 type Props = {
   instructor: InstructorFormData;
+  hideNavigation?: boolean;
+  onSuccess?: () => void;
+  onCancel?: () => void;
 };
 
-export function InstructorEditForm({ instructor }: Props) {
+export function InstructorEditForm({
+  instructor,
+  hideNavigation = false,
+  onSuccess,
+  onCancel,
+}: Props) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const [state, formAction] = useFormState(
     updateInstructor.bind(null, instructor.id),
     null
   );
+
+  useEffect(() => {
+    if (state?.success) {
+      void invalidateInstructorsPageQueries(queryClient);
+      notifyDataWrite();
+      if (onSuccess) {
+        onSuccess();
+      } else if (!hideNavigation) {
+        router.push(`/dashboard/instructors/${instructor.id}`);
+      }
+    }
+  }, [
+    state?.success,
+    queryClient,
+    router,
+    instructor.id,
+    onSuccess,
+    hideNavigation,
+  ]);
 
   return (
     <Card className="border-border/50 bg-card max-w-2xl">
@@ -168,11 +202,17 @@ export function InstructorEditForm({ instructor }: Props) {
           )}
           <div className="flex gap-2">
             <InstructorEditSubmitButton />
-            <Button variant="outline" asChild>
-              <Link href={`/dashboard/instructors/${instructor.id}`}>
+            {hideNavigation && onCancel ? (
+              <Button type="button" variant="outline" onClick={onCancel}>
                 ביטול
-              </Link>
-            </Button>
+              </Button>
+            ) : (
+              <Button variant="outline" asChild>
+                <Link href={`/dashboard/instructors/${instructor.id}`}>
+                  ביטול
+                </Link>
+              </Button>
+            )}
           </div>
         </form>
       </CardContent>

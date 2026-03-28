@@ -25,7 +25,7 @@ export function createRecordDialogClassName(maxWidth: "md" | "lg" = "lg"): strin
 /** Native `<select>` in dashboard forms — matches Input visual weight. */
 export function formNativeSelectClassName(...extra: ClassValue[]): string {
   return cn(
-    "flex h-9 w-full px-3 py-1 text-sm",
+    "flex h-10 w-full px-3 py-2 text-base",
     formControlSurface,
     extra
   );
@@ -34,7 +34,7 @@ export function formNativeSelectClassName(...extra: ClassValue[]): string {
 /** Compact selects (e.g. grid row helpers). */
 export function formNativeSelectCompactClassName(...extra: ClassValue[]): string {
   return cn(
-    "flex h-8 min-w-[80px] flex-1 rounded-md border border-input bg-popover px-2 text-sm text-foreground shadow-sm transition-colors hover:border-muted-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/55",
+    "flex h-9 min-w-[80px] flex-1 rounded-md border border-input bg-popover px-2 text-base text-foreground shadow-sm transition-colors hover:border-muted-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/55",
     extra
   );
 }

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { Header } from "@/components/dashboard/header";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { fetchCenterRecordForDetail } from "@/lib/server/center-record";
 import { CenterDetailsClient } from "./center-details-client";
 
 type Props = {
@@ -13,13 +13,7 @@ export default async function CenterDetailPage({ params }: Props) {
   if (!user) redirect("/");
 
   const { id } = await params;
-  const center = await prisma.center.findUnique({
-    where: { id },
-    include: {
-      instructor: true,
-      groups: true,
-    },
-  });
+  const center = await fetchCenterRecordForDetail(id);
 
   if (!center) redirect("/dashboard/centers");
 

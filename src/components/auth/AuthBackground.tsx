@@ -27,7 +27,7 @@ export function AuthBackground() {
       />
       {/* ~0.65–0.75 opacity dark overlay for readability */}
       <div
-        className="absolute inset-0 -z-20 bg-black/[0.72]"
+        className="absolute inset-0 -z-20 bg-background/88"
         aria-hidden
       />
     </>

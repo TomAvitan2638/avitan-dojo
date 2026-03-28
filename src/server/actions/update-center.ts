@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/auth";
 
 export type UpdateCenterState = {
   error?: string;
+  success?: boolean;
 };
 
 export async function updateCenter(
@@ -21,6 +22,7 @@ export async function updateCenter(
   const instructorId = (formData.get("instructorId") as string)?.trim() || null;
   const priceStr = (formData.get("price") as string)?.trim() || null;
   const notes = (formData.get("notes") as string)?.trim() || null;
+  const noRedirect = formData.get("noRedirect") === "true";
 
   if (!name) {
     return { error: "שם המרכז נדרש" };
@@ -43,5 +45,10 @@ export async function updateCenter(
 
   revalidatePath("/dashboard/centers");
   revalidatePath(`/dashboard/centers/${centerId}`);
+
+  if (noRedirect) {
+    return { success: true };
+  }
+
   redirect(`/dashboard/centers/${centerId}`);
 }

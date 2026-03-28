@@ -25,9 +25,9 @@ export function BirthdaysWidget({ birthdays }: Props) {
           <div className="rounded-lg bg-dojo-red/10 p-2">
             <Cake className="size-5 text-dojo-red" />
           </div>
-          <CardTitle className="text-lg">ימי הולדת קרובים</CardTitle>
+          <CardTitle className="text-xl">ימי הולדת קרובים</CardTitle>
         </div>
-        <span className="rounded-full bg-dojo-red/10 px-2.5 py-0.5 text-xs font-medium text-dojo-red">
+        <span className="rounded-full bg-dojo-red/10 px-2.5 py-1 text-sm font-medium text-dojo-red">
           {birthdays.length}
         </span>
       </CardHeader>
@@ -35,7 +35,7 @@ export function BirthdaysWidget({ birthdays }: Props) {
         {birthdays.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <Cake className="size-12 text-muted-foreground/30" />
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="mt-2 text-base text-muted-foreground">
               אין ימי הולדת ב-7 הימים הבאים
             </p>
           </div>
@@ -52,7 +52,7 @@ export function BirthdaysWidget({ birthdays }: Props) {
                   className={cn(
                     "flex items-center justify-between rounded-lg p-3 transition-colors",
                     birthday.isToday
-                      ? "border border-dojo-red/45 bg-gradient-to-br from-dojo-red/25 via-dojo-red/10 to-zinc-900/40 shadow-[0_0_18px_rgba(220,38,38,0.14)] ring-1 ring-dojo-red/35"
+                      ? "border border-dojo-red/45 bg-gradient-to-br from-dojo-red/20 via-dojo-red/8 to-muted/70 shadow-[0_0_18px_rgba(185,28,28,0.12)] ring-1 ring-dojo-red/35"
                       : "bg-secondary/50"
                   )}
                 >
@@ -70,7 +70,7 @@ export function BirthdaysWidget({ birthdays }: Props) {
                       </div>
                       <span
                         className={cn(
-                          "max-w-[5rem] text-center text-[11px] leading-tight text-muted-foreground",
+                          "max-w-[5rem] text-center text-xs leading-tight text-muted-foreground",
                           birthday.isToday && "font-medium text-dojo-red/90"
                         )}
                       >
@@ -93,7 +93,7 @@ export function BirthdaysWidget({ birthdays }: Props) {
                           name
                         )}
                       </p>
-                      <p className="text-xs text-muted-foreground">{subtitle}</p>
+                      <p className="text-sm text-muted-foreground">{subtitle}</p>
                     </div>
                   </div>
                   <Link href={`/dashboard/students/${birthday.id}`}>

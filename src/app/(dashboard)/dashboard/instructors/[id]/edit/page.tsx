@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { Header } from "@/components/dashboard/header";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { fetchInstructorRecordForEdit } from "@/lib/server/instructor-record";
 import { InstructorEditForm } from "../instructor-edit-form";
 
 type Props = {
@@ -13,9 +13,7 @@ export default async function InstructorEditPage({ params }: Props) {
   if (!user) redirect("/");
 
   const { id } = await params;
-  const instructor = await prisma.instructor.findUnique({
-    where: { id },
-  });
+  const instructor = await fetchInstructorRecordForEdit(id);
 
   if (!instructor) redirect("/dashboard/instructors");
 

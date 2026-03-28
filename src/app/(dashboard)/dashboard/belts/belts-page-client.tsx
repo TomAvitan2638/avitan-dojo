@@ -210,7 +210,7 @@ export function BeltsPageClient({
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
-                  <TableRow className="border-b border-white/10 hover:bg-transparent">
+                  <TableRow className="border-b border-border hover:bg-transparent">
                     <TableHead
                       className="w-[52px] min-w-[52px] max-w-[52px] py-3.5 px-2 text-right align-middle"
                       aria-hidden
@@ -227,7 +227,7 @@ export function BeltsPageClient({
                   {filteredAndSortedStudents.map((student) => (
                     <TableRow
                       key={student.id}
-                      className="cursor-pointer border-b border-white/5 transition-colors duration-150 hover:bg-white/[0.04]"
+                      className="cursor-pointer border-b border-border/50 transition-colors duration-150 hover:bg-muted/40"
                       onClick={() => handleRowClick(student)}
                     >
                       <TableCell

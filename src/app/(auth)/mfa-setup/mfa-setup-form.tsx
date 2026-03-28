@@ -160,7 +160,7 @@ export function MfaSetupForm() {
   if (bootLoading) {
     return (
       <AuthCard title="הגדרת אימות דו-שלבי" subtitle="טוען…">
-        <div className="py-8 text-center text-white/70">טוען…</div>
+        <div className="py-8 text-center text-base text-muted-foreground">טוען…</div>
       </AuthCard>
     );
   }
@@ -168,7 +168,7 @@ export function MfaSetupForm() {
   if (bootError) {
     return (
       <AuthCard title="הגדרת אימות דו-שלבי">
-        <p className="text-center text-sm text-red-200" role="alert">
+        <p className="text-center text-base text-destructive" role="alert">
           {bootError}
         </p>
       </AuthCard>
@@ -181,7 +181,7 @@ export function MfaSetupForm() {
       subtitle="נדרש מאמת (למשל Microsoft Authenticator) כדי להמשיך."
     >
       <div
-        className="mb-6 rounded-xl border border-amber-400/35 bg-amber-950/35 px-4 py-3 text-sm leading-relaxed text-amber-50"
+        className="mb-6 rounded-xl border border-amber-600/30 bg-amber-50 px-4 py-3 text-base leading-relaxed text-amber-950"
         role="note"
       >
         שמרו את מפתח ה־TOTP בסוד — כמו סיסמה. אל תשתפו צילומי מסך של ה־QR או
@@ -189,9 +189,9 @@ export function MfaSetupForm() {
       </div>
 
       {qrUnavailable ? (
-        <div className="mb-6 space-y-3 text-sm leading-relaxed text-white/85">
+        <div className="mb-6 space-y-3 text-base leading-relaxed text-foreground">
           <p>{FALLBACK_NO_QR_HE}</p>
-          <p className="text-white/70">{FALLBACK_ADMIN_HE}</p>
+          <p className="text-muted-foreground">{FALLBACK_ADMIN_HE}</p>
         </div>
       ) : (
         <>
@@ -211,13 +211,13 @@ export function MfaSetupForm() {
               <button
                 type="button"
                 onClick={() => setShowSecret((s) => !s)}
-                className="text-sm text-white/85 underline-offset-4 transition-colors hover:text-white hover:underline"
+                className="text-base text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
               >
                 {showSecret ? "הסתר מפתח ידני" : "הצג מפתח להזנה ידנית"}
               </button>
               {showSecret ? (
                 <code
-                  className="mt-3 block break-all rounded-lg border border-white/15 bg-black/40 p-3 text-left text-sm text-white/90"
+                  className="mt-3 block break-all rounded-lg border border-border bg-muted p-3 text-left text-base text-foreground"
                   dir="ltr"
                 >
                   {secret}
@@ -249,7 +249,7 @@ export function MfaSetupForm() {
 
         {formError ? (
           <p
-            className="rounded-lg bg-red-950/50 px-3 py-2 text-center text-sm text-red-200"
+            className="rounded-lg bg-destructive/10 px-3 py-2 text-center text-base text-destructive"
             role="alert"
           >
             {formError}

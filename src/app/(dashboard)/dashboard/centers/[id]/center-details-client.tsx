@@ -22,19 +22,28 @@ type GroupInfo = {
 type Props = {
   center: CenterData;
   groups: GroupInfo[];
+  /** When set, "עריכה" uses this callback instead of navigating to the edit route (e.g. modal). */
+  onEditClick?: () => void;
 };
 
-export function CenterDetailsClient({ center, groups }: Props) {
+export function CenterDetailsClient({ center, groups, onEditClick }: Props) {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <h2 className="text-2xl font-bold text-foreground">{center.name}</h2>
-        <Button variant="outline" size="sm" asChild>
-          <Link href={`/dashboard/centers/${center.id}/edit`}>
+        {onEditClick ? (
+          <Button variant="outline" size="sm" type="button" onClick={onEditClick}>
             <Pencil className="ml-1 h-4 w-4" />
             עריכה
-          </Link>
-        </Button>
+          </Button>
+        ) : (
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/dashboard/centers/${center.id}/edit`}>
+              <Pencil className="ml-1 h-4 w-4" />
+              עריכה
+            </Link>
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">

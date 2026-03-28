@@ -58,15 +58,15 @@ export function BeltHistoryModal({ student, open, onOpenChange }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-h-[90vh] overflow-y-auto sm:max-w-2xl bg-zinc-900 border-white/10 shadow-2xl shadow-black/50 ring-1 ring-white/5"
-        overlayClassName="bg-black/60 backdrop-blur-sm"
+        className="max-h-[90vh] overflow-y-auto sm:max-w-2xl border-border bg-card shadow-lg ring-1 ring-border/40"
+        overlayClassName="bg-foreground/45 backdrop-blur-sm"
       >
         <DialogHeader>
           <DialogTitle className="sr-only">{student.name}</DialogTitle>
         </DialogHeader>
         <div className="space-y-6">
           <div className="flex items-center gap-4">
-            <Avatar className="h-16 w-16 border-2 border-white/10">
+            <Avatar className="h-16 w-16 border-2 border-border">
               {student.photoUrl ? (
                 <AvatarImage
                   src={student.photoUrl}
@@ -80,7 +80,7 @@ export function BeltHistoryModal({ student, open, onOpenChange }: Props) {
               )}
             </Avatar>
             <div>
-              <h2 className="text-2xl font-bold text-white">{student.name}</h2>
+              <h2 className="text-2xl font-bold text-foreground">{student.name}</h2>
               <p className="mt-1 text-muted-foreground" dir="ltr">
                 ת״ז: {student.identifier}
               </p>
@@ -95,9 +95,9 @@ export function BeltHistoryModal({ student, open, onOpenChange }: Props) {
           </div>
 
           <div className="grid gap-6 sm:grid-cols-2">
-            <Card className="border-white/10 bg-zinc-800">
+            <Card className="border-border bg-card">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base text-white">
+                <CardTitle className="flex items-center gap-2 text-base text-foreground">
                   <MapPin className="h-4 w-4" />
                   שיוך
                 </CardTitle>
@@ -106,13 +106,13 @@ export function BeltHistoryModal({ student, open, onOpenChange }: Props) {
                 {student.centerName && (
                   <div className="flex gap-2">
                     <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-white">מרכז: {student.centerName}</span>
+                    <span className="text-foreground">מרכז: {student.centerName}</span>
                   </div>
                 )}
                 {student.groupName && (
                   <div className="flex gap-2">
                     <Users className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-white">קבוצה: {student.groupName}</span>
+                    <span className="text-foreground">קבוצה: {student.groupName}</span>
                   </div>
                 )}
                 {!student.centerName && !student.groupName && (
@@ -121,9 +121,9 @@ export function BeltHistoryModal({ student, open, onOpenChange }: Props) {
               </CardContent>
             </Card>
 
-            <Card className="border-white/10 bg-zinc-800">
+            <Card className="border-border bg-card">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base text-white">
+                <CardTitle className="flex items-center gap-2 text-base text-foreground">
                   <Award className="h-4 w-4" />
                   דרגה נוכחית
                 </CardTitle>
@@ -131,7 +131,7 @@ export function BeltHistoryModal({ student, open, onOpenChange }: Props) {
               <CardContent className="text-sm">
                 {student.currentBeltName ? (
                   <div className="space-y-1">
-                    <p className="text-white font-medium">{student.currentBeltName}</p>
+                    <p className="text-foreground font-medium">{student.currentBeltName}</p>
                     {student.currentBeltDate && (
                       <p className="text-muted-foreground" dir="ltr">
                         תאריך: {student.currentBeltDate}
@@ -145,9 +145,9 @@ export function BeltHistoryModal({ student, open, onOpenChange }: Props) {
             </Card>
           </div>
 
-          <Card className="border-white/10 bg-zinc-800 sm:col-span-2">
+          <Card className="border-border bg-card sm:col-span-2">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base text-white">
+              <CardTitle className="flex items-center gap-2 text-base text-foreground">
                 <Award className="h-4 w-4" />
                 היסטוריית דרגות
               </CardTitle>
@@ -156,7 +156,7 @@ export function BeltHistoryModal({ student, open, onOpenChange }: Props) {
               {student.beltHistory.length > 0 ? (
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-white/10 hover:bg-transparent">
+                    <TableRow className="border-border hover:bg-transparent">
                       <TableHead className="text-right text-muted-foreground">
                         דרגה
                       </TableHead>
@@ -172,9 +172,9 @@ export function BeltHistoryModal({ student, open, onOpenChange }: Props) {
                     {student.beltHistory.map((entry) => (
                       <TableRow
                         key={entry.id}
-                        className="border-white/5 hover:bg-white/[0.04]"
+                        className="border-border/50 hover:bg-muted/40"
                       >
-                        <TableCell className="font-medium text-white">
+                        <TableCell className="font-medium text-foreground">
                           {entry.beltName}
                         </TableCell>
                         <TableCell

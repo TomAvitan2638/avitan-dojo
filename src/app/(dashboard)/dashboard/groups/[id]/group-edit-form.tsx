@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useFormState, useFormStatus } from "react-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { updateGroup } from "@/server/actions/update-group";
+import { invalidateGroupsPageAndDashboardHome } from "@/lib/groups-page-query";
 import Link from "next/link";
 import { TRAINING_DAYS_ORDER, TRAINING_DAY_LABELS } from "@/lib/training-days";
 import {
@@ -59,14 +62,44 @@ type Props = {
   group: GroupFormData;
   centers: CenterOption[];
   instructors: InstructorOption[];
+  hideNavigation?: boolean;
+  onSuccess?: () => void;
+  onCancel?: () => void;
 };
 
-export function GroupEditForm({ group, centers, instructors }: Props) {
+export function GroupEditForm({
+  group,
+  centers,
+  instructors,
+  hideNavigation = false,
+  onSuccess,
+  onCancel,
+}: Props) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const [schedules, setSchedules] = useState<ScheduleSlot[]>(group.schedules);
   const [state, formAction] = useFormState(
     updateGroup.bind(null, group.id),
     null
   );
+
+  useEffect(() => {
+    if (state?.success) {
+      void invalidateGroupsPageAndDashboardHome(queryClient);
+      if (onSuccess) {
+        onSuccess();
+      } else if (!hideNavigation) {
+        router.push(`/dashboard/groups/${group.id}`);
+      }
+    }
+  }, [
+    state?.success,
+    queryClient,
+    router,
+    group.id,
+    onSuccess,
+    hideNavigation,
+  ]);
 
   const addSchedule = () => {
     setSchedules((prev) => [
@@ -219,10 +252,18 @@ export function GroupEditForm({ group, centers, instructors }: Props) {
           )}
           <div className="flex gap-2">
             <GroupEditSubmitButton />
-            <Button variant="outline" asChild>
-              <Link href={`/dashboard/groups/${group.id}`}>ביטול</Link>
-            </Button>
+            {hideNavigation && onCancel ? (
+              <Button type="button" variant="outline" onClick={onCancel}>
+                ביטול
+              </Button>
+            ) : (
+              <Button variant="outline" asChild>
+                <Link href={`/dashboard/groups/${group.id}`}>ביטול</Link>
+              </Button>
+            )}
           </div>
+
+
         </form>
       </CardContent>
     </Card>

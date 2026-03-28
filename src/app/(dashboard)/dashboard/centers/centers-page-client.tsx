@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { useFormState, useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,13 +29,22 @@ import {
   Loader2,
   CheckCircle,
 } from "lucide-react";
-import Link from "next/link";
 import { createCenter } from "@/server/actions/create-center";
+import { CenterDetailsModal } from "@/components/centers/center-details-modal";
 import { deleteCenter } from "@/server/actions/delete-center";
 import {
   createRecordDialogClassName,
   formNativeSelectClassName,
 } from "@/lib/form-field";
+import {
+  RecordDialogBodyLock,
+  RecordDialogCancelButton,
+  RecordDialogPrimarySubmitButton,
+  RecordDialogSaveTailBanners,
+  recordDialogBlockDismiss,
+  useRecordDialogPostSavePhase,
+  useWrappedFormState,
+} from "@/components/record-dialog/record-dialog-save-ux";
 
 type CenterRow = {
   id: string;
@@ -57,34 +65,19 @@ type Props = {
   instructors: InstructorOption[];
 };
 
-function CreateCenterSubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button
-      type="submit"
-      className="bg-dojo-red hover:bg-dojo-red/90"
-      disabled={pending}
-    >
-      {pending ? (
-        <>
-          <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-          שומר...
-        </>
-      ) : (
-        "שמירה"
-      )}
-    </Button>
-  );
-}
-
 export function CentersPageClient({ centers, instructors }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [state, formAction] = useFormState(createCenter, null);
   const createSuccessHandledRef = useRef(false);
-  const [createPhase, setCreatePhase] = useState<"idle" | "refreshing" | "success">("idle");
+  const { state, formAction, submitBusy } = useWrappedFormState(createCenter, null);
+  const { tailPhase: createPhase } = useRecordDialogPostSavePhase({
+    success: state?.success,
+    isOpen: isAddDialogOpen,
+    handledRef: createSuccessHandledRef,
+    onAutoClose: () => setIsAddDialogOpen(false),
+  });
   const [deleteDialogCenter, setDeleteDialogCenter] = useState<{
     id: string;
     name: string;
@@ -94,29 +87,15 @@ export function CentersPageClient({ centers, instructors }: Props) {
     error?: string;
   }>({});
   const [deletePhase, setDeletePhase] = useState<"idle" | "refreshing" | "success">("idle");
+  const [detailModalCenterId, setDetailModalCenterId] = useState<string | null>(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [detailModalEdit, setDetailModalEdit] = useState(false);
 
-  useEffect(() => {
-    if (state?.success && isAddDialogOpen && !createSuccessHandledRef.current) {
-      createSuccessHandledRef.current = true;
-      setCreatePhase("refreshing");
-      startTransition(() => router.refresh());
-    }
-  }, [state?.success, isAddDialogOpen, router]);
-
-  useEffect(() => {
-    if (createPhase === "refreshing" && !isPending) setCreatePhase("success");
-  }, [createPhase, isPending]);
-
-  useEffect(() => {
-    if (createPhase === "success") {
-      const t = setTimeout(() => {
-        setIsAddDialogOpen(false);
-        setCreatePhase("idle");
-        createSuccessHandledRef.current = false;
-      }, 1200);
-      return () => clearTimeout(t);
-    }
-  }, [createPhase]);
+  const openCenterModal = (id: string, edit = false) => {
+    setDetailModalEdit(edit);
+    setDetailModalCenterId(id);
+    setDetailModalOpen(true);
+  };
 
   useEffect(() => {
     if (deletePhase === "refreshing" && !isPending) setDeletePhase("success");
@@ -176,12 +155,8 @@ export function CentersPageClient({ centers, instructors }: Props) {
         <Dialog
           open={isAddDialogOpen}
           onOpenChange={(open) => {
-            if (!open && createPhase === "refreshing") return;
+            if (!open && recordDialogBlockDismiss(createPhase, submitBusy)) return;
             setIsAddDialogOpen(open);
-            if (!open) {
-              setCreatePhase("idle");
-              createSuccessHandledRef.current = false;
-            }
           }}
         >
           <DialogTrigger asChild>
@@ -202,6 +177,7 @@ export function CentersPageClient({ centers, instructors }: Props) {
               className="flex min-h-0 flex-1 flex-col"
             >
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-4">
+                <RecordDialogBodyLock tailPhase={createPhase} className="min-h-0">
                 <div className="grid gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="name">שם המרכז</Label>
@@ -249,26 +225,10 @@ export function CentersPageClient({ centers, instructors }: Props) {
                     />
                   </div>
                 </div>
+                </RecordDialogBodyLock>
               </div>
               <div className="shrink-0 space-y-3 border-t border-border/70 bg-background px-6 py-4">
-                {createPhase === "refreshing" && (
-                  <div
-                    className="flex items-center gap-2 rounded-md border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm text-blue-600 dark:text-blue-400"
-                    role="status"
-                  >
-                    <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
-                    מעדכן נתונים...
-                  </div>
-                )}
-                {createPhase === "success" && (
-                  <div
-                    className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-600 dark:text-green-400"
-                    role="status"
-                  >
-                    <CheckCircle className="h-5 w-5 shrink-0" />
-                    הרשומה נשמרה בהצלחה
-                  </div>
-                )}
+                <RecordDialogSaveTailBanners phase={createPhase} />
                 {state?.error && (
                   <p className="text-sm text-destructive" role="alert">
                     {state.error}
@@ -277,14 +237,10 @@ export function CentersPageClient({ centers, instructors }: Props) {
                 <div className="flex justify-start gap-2">
                   {createPhase === "idle" && (
                     <>
-                      <CreateCenterSubmitButton />
-                      <Button
-                        type="button"
-                        variant="outline"
+                      <RecordDialogPrimarySubmitButton />
+                      <RecordDialogCancelButton
                         onClick={() => setIsAddDialogOpen(false)}
-                      >
-                        ביטול
-                      </Button>
+                      />
                     </>
                   )}
                 </div>
@@ -331,23 +287,25 @@ export function CentersPageClient({ centers, instructors }: Props) {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" asChild>
-                      <Link
-                        href={`/dashboard/centers/${center.id}`}
-                        className="flex items-center"
-                      >
-                        <Eye className="ml-1 h-4 w-4" />
-                        צפייה
-                      </Link>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center"
+                      type="button"
+                      onClick={() => openCenterModal(center.id)}
+                    >
+                      <Eye className="ml-1 h-4 w-4" />
+                      צפייה
                     </Button>
-                    <Button variant="outline" size="sm" asChild>
-                      <Link
-                        href={`/dashboard/centers/${center.id}/edit`}
-                        className="flex items-center"
-                      >
-                        <Pencil className="ml-1 h-4 w-4" />
-                        עריכה
-                      </Link>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center"
+                      type="button"
+                      onClick={() => openCenterModal(center.id, true)}
+                    >
+                      <Pencil className="ml-1 h-4 w-4" />
+                      עריכה
                     </Button>
                     <Button
                       variant="outline"
@@ -466,6 +424,17 @@ export function CentersPageClient({ centers, instructors }: Props) {
           )}
         </DialogContent>
       </Dialog>
+
+      <CenterDetailsModal
+        centerId={detailModalCenterId}
+        open={detailModalOpen}
+        initialEditMode={detailModalEdit}
+        onOpenChange={(o) => {
+          setDetailModalOpen(o);
+          if (!o) setDetailModalCenterId(null);
+        }}
+        onSaveSuccess={() => startTransition(() => router.refresh())}
+      />
     </>
   );
 }

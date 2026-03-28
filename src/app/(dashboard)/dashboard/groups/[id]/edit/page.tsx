@@ -1,10 +1,8 @@
 import { redirect } from "next/navigation";
 import { Header } from "@/components/dashboard/header";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { fetchGroupEditBundle } from "@/lib/server/group-record";
 import { GroupEditForm } from "../group-edit-form";
-import { format } from "date-fns";
-import type { TrainingDay } from "@prisma/client";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -15,37 +13,11 @@ export default async function GroupEditPage({ params }: Props) {
   if (!user) redirect("/");
 
   const { id } = await params;
-  const group = await prisma.group.findUnique({
-    where: { id },
-    include: { schedules: { orderBy: { trainingDay: "asc" } } },
-  });
+  const bundle = await fetchGroupEditBundle(id);
 
-  if (!group) redirect("/dashboard/groups");
+  if (!bundle) redirect("/dashboard/groups");
 
-  const [centers, instructors] = await Promise.all([
-    prisma.center.findMany({
-      orderBy: { name: "asc" },
-      select: { id: true, name: true },
-    }),
-    prisma.instructor.findMany({
-      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-      select: { id: true, firstName: true, lastName: true },
-    }),
-  ]);
-
-  const instructorsForSelect = instructors.map((i) => ({
-    id: i.id,
-    name: `${i.firstName} ${i.lastName}`,
-  }));
-
-  const initialSchedules =
-    group.schedules.length > 0
-      ? group.schedules.map((s) => ({
-          trainingDay: s.trainingDay as TrainingDay,
-          startTime: format(s.startTime, "HH:mm"),
-          endTime: format(s.endTime, "HH:mm"),
-        }))
-      : [{ trainingDay: "SUNDAY" as TrainingDay, startTime: "16:00", endTime: "17:00" }];
+  const { group, centers, instructors, initialSchedules } = bundle;
 
   return (
     <div className="min-h-screen">
@@ -65,7 +37,7 @@ export default async function GroupEditPage({ params }: Props) {
             schedules: initialSchedules,
           }}
           centers={centers}
-          instructors={instructorsForSelect}
+          instructors={instructors}
         />
       </div>
     </div>

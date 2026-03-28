@@ -209,8 +209,8 @@ export function StudentDetailsModal({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="max-h-[90vh] overflow-y-auto sm:max-w-2xl bg-zinc-900 border-white/10 shadow-2xl shadow-black/50 ring-1 ring-white/5"
-        overlayClassName="bg-black/60 backdrop-blur-sm"
+        className="max-h-[90vh] overflow-y-auto sm:max-w-2xl border-border bg-card shadow-lg ring-1 ring-border/40"
+        overlayClassName="bg-foreground/45 backdrop-blur-sm"
       >
         {isLoading && (
           <div
@@ -219,7 +219,7 @@ export function StudentDetailsModal({
             aria-busy="true"
           >
             <Loader2 className="h-10 w-10 animate-spin text-dojo-red" />
-            <p className="text-sm">טוען פרטי תלמיד...</p>
+            <p className="text-base">טוען פרטי תלמיד...</p>
           </div>
         )}
         {loadError && !isLoading && (
@@ -241,7 +241,7 @@ export function StudentDetailsModal({
             </DialogHeader>
             <div className="space-y-6">
               <div className="flex items-center gap-4">
-                <Avatar className="h-16 w-16 border-2 border-white/10">
+                <Avatar className="h-16 w-16 border-2 border-border">
                   {student.photoUrl ? (
                     <AvatarImage
                       src={student.photoUrl}
@@ -255,7 +255,7 @@ export function StudentDetailsModal({
                   )}
                 </Avatar>
                 <div>
-                  <h2 className="text-2xl font-bold text-white">{fullName}</h2>
+                  <h2 className="text-2xl font-bold text-foreground">{fullName}</h2>
                   <p className="mt-1 text-muted-foreground">ת״ז: {student.identifier}</p>
                   <p className="text-sm text-muted-foreground">
                     סטטוס: {student.status === "active" ? "פעיל" : "לא פעיל"}
@@ -264,55 +264,55 @@ export function StudentDetailsModal({
               </div>
 
               <div className="grid gap-6 sm:grid-cols-2">
-                <Card className="border-white/10 bg-zinc-800">
+                <Card className="border-border bg-card">
                   <CardHeader>
-                    <CardTitle className="text-base text-white">פרטים אישיים</CardTitle>
+                    <CardTitle className="text-base text-foreground">פרטים אישיים</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm">
                     <div className="flex gap-2">
                       <span className="text-muted-foreground">ת״ז:</span>
-                      <span className="text-white" dir="ltr">{student.identifier}</span>
+                      <span className="text-foreground" dir="ltr">{student.identifier}</span>
                     </div>
                     {student.studentNumber != null && (
                       <div className="flex gap-2">
                         <span className="text-muted-foreground">מספר תלמיד:</span>
-                        <span className="text-white">{student.studentNumber}</span>
+                        <span className="text-foreground">{student.studentNumber}</span>
                       </div>
                     )}
                     <div className="flex gap-2">
                       <span className="text-muted-foreground">שם:</span>
-                      <span className="text-white">{fullName}</span>
+                      <span className="text-foreground">{fullName}</span>
                     </div>
                     {student.gender && (
                       <div className="flex gap-2">
                         <span className="text-muted-foreground">מין:</span>
-                        <span className="text-white">{student.gender}</span>
+                        <span className="text-foreground">{student.gender}</span>
                       </div>
                     )}
                     {student.birthDate && (
                       <div className="flex gap-2">
                         <span className="text-muted-foreground">תאריך לידה:</span>
-                        <span className="text-white">{student.birthDate}</span>
+                        <span className="text-foreground">{student.birthDate}</span>
                       </div>
                     )}
                     {student.registrationDate && (
                       <div className="flex gap-2">
                         <span className="text-muted-foreground">תאריך הרשמה:</span>
-                        <span className="text-white">{student.registrationDate}</span>
+                        <span className="text-foreground">{student.registrationDate}</span>
                       </div>
                     )}
                     {student.endDate && (
                       <div className="flex gap-2">
                         <span className="text-muted-foreground">תאריך סיום:</span>
-                        <span className="text-white">{student.endDate}</span>
+                        <span className="text-foreground">{student.endDate}</span>
                       </div>
                     )}
                   </CardContent>
                 </Card>
 
-                <Card className="border-white/10 bg-zinc-800">
+                <Card className="border-border bg-card">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base text-white">
+                    <CardTitle className="flex items-center gap-2 text-base text-foreground">
                       <Users className="h-4 w-4" />
                       שיוך
                     </CardTitle>
@@ -321,13 +321,13 @@ export function StudentDetailsModal({
                     {student.centerName && (
                       <div className="flex gap-2">
                         <MapPin className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-white">מרכז: {student.centerName}</span>
+                        <span className="text-foreground">מרכז: {student.centerName}</span>
                       </div>
                     )}
                     {student.groupName && (
                       <div className="flex gap-2">
                         <User className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-white">קבוצה: {student.groupName}</span>
+                        <span className="text-foreground">קבוצה: {student.groupName}</span>
                       </div>
                     )}
                     {!student.centerName && !student.groupName && (
@@ -336,9 +336,9 @@ export function StudentDetailsModal({
                   </CardContent>
                 </Card>
 
-                <Card className="border-white/10 bg-zinc-800">
+                <Card className="border-border bg-card">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base text-white">
+                    <CardTitle className="flex items-center gap-2 text-base text-foreground">
                       <Phone className="h-4 w-4" />
                       יצירת קשר
                     </CardTitle>
@@ -347,19 +347,19 @@ export function StudentDetailsModal({
                     {student.phone && (
                       <div className="flex gap-2" dir="ltr">
                         <span className="text-muted-foreground">טלפון:</span>
-                        <span className="text-white">{student.phone}</span>
+                        <span className="text-foreground">{student.phone}</span>
                       </div>
                     )}
                     {student.mobilePhone && (
                       <div className="flex gap-2" dir="ltr">
                         <span className="text-muted-foreground">פלאפון:</span>
-                        <span className="text-white">{student.mobilePhone}</span>
+                        <span className="text-foreground">{student.mobilePhone}</span>
                       </div>
                     )}
                     {student.email && (
                       <div className="flex gap-2" dir="ltr">
                         <Mail className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-white">{student.email}</span>
+                        <span className="text-foreground">{student.email}</span>
                       </div>
                     )}
                     {!student.phone && !student.mobilePhone && !student.email && (
@@ -368,9 +368,9 @@ export function StudentDetailsModal({
                   </CardContent>
                 </Card>
 
-                <Card className="border-white/10 bg-zinc-800">
+                <Card className="border-border bg-card">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base text-white">
+                    <CardTitle className="flex items-center gap-2 text-base text-foreground">
                       <Building2 className="h-4 w-4" />
                       כתובת
                     </CardTitle>
@@ -379,19 +379,19 @@ export function StudentDetailsModal({
                     {student.city && (
                       <div className="flex gap-2">
                         <span className="text-muted-foreground">עיר:</span>
-                        <span className="text-white">{student.city}</span>
+                        <span className="text-foreground">{student.city}</span>
                       </div>
                     )}
                     {student.street && (
                       <div className="flex gap-2">
                         <span className="text-muted-foreground">רחוב:</span>
-                        <span className="text-white">{student.street}</span>
+                        <span className="text-foreground">{student.street}</span>
                       </div>
                     )}
                     {student.postalCode && (
                       <div className="flex gap-2">
                         <span className="text-muted-foreground">מיקוד:</span>
-                        <span className="text-white" dir="ltr">{student.postalCode}</span>
+                        <span className="text-foreground" dir="ltr">{student.postalCode}</span>
                       </div>
                     )}
                     {!student.city && !student.street && !student.postalCode && (
@@ -400,27 +400,27 @@ export function StudentDetailsModal({
                   </CardContent>
                 </Card>
 
-                <Card className="border-white/10 bg-zinc-800 sm:col-span-2">
+                <Card className="border-border bg-card sm:col-span-2">
                   <CardHeader>
-                    <CardTitle className="text-base text-white">משפחה וחירום</CardTitle>
+                    <CardTitle className="text-base text-foreground">משפחה וחירום</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm">
                     {student.parentName && (
                       <div className="flex gap-2">
                         <span className="text-muted-foreground">הורה:</span>
-                        <span className="text-white">{student.parentName}</span>
+                        <span className="text-foreground">{student.parentName}</span>
                       </div>
                     )}
                     {student.parentPhone && (
                       <div className="flex gap-2">
                         <span className="text-muted-foreground">טלפון הורה:</span>
-                        <span className="text-white" dir="ltr">{student.parentPhone}</span>
+                        <span className="text-foreground" dir="ltr">{student.parentPhone}</span>
                       </div>
                     )}
                     {student.emergencyDetails && (
                       <div className="flex gap-2">
                         <span className="text-muted-foreground">פרטי חירום:</span>
-                        <span className="text-white">{student.emergencyDetails}</span>
+                        <span className="text-foreground">{student.emergencyDetails}</span>
                       </div>
                     )}
                     {!student.parentName &&
@@ -431,9 +431,9 @@ export function StudentDetailsModal({
                   </CardContent>
                 </Card>
 
-                <Card className="border-white/10 bg-zinc-800">
+                <Card className="border-border bg-card">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base text-white">
+                    <CardTitle className="flex items-center gap-2 text-base text-foreground">
                       <Award className="h-4 w-4" />
                       דרגה
                     </CardTitle>
@@ -441,7 +441,7 @@ export function StudentDetailsModal({
                   <CardContent className="text-sm">
                     {student.beltName && student.beltDate ? (
                       <div className="space-y-1">
-                        <p className="text-white">
+                        <p className="text-foreground">
                           {student.beltName} ({student.beltDate})
                         </p>
                         {student.beltCertificateNumber && (
@@ -456,23 +456,23 @@ export function StudentDetailsModal({
                   </CardContent>
                 </Card>
 
-                <Card className="border-white/10 bg-zinc-800">
+                <Card className="border-border bg-card">
                   <CardHeader>
-                    <CardTitle className="text-base text-white">פרטים נוספים</CardTitle>
+                    <CardTitle className="text-base text-foreground">פרטים נוספים</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm">
                     {student.weight != null && (
-                      <p className="text-white">משקל: {student.weight} ק״ג</p>
+                      <p className="text-foreground">משקל: {student.weight} ק״ג</p>
                     )}
-                    <p className="text-white">
+                    <p className="text-foreground">
                       אישור רפואי: {student.hasMedicalApproval ? "כן" : "לא"}
                     </p>
                   </CardContent>
                 </Card>
 
-                <Card className="border-white/10 bg-zinc-800 sm:col-span-2">
+                <Card className="border-border bg-card sm:col-span-2">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base text-white">
+                    <CardTitle className="flex items-center gap-2 text-base text-foreground">
                       <Award className="h-4 w-4" />
                       היסטוריית דרגות
                     </CardTitle>
@@ -481,7 +481,7 @@ export function StudentDetailsModal({
                     {student.beltHistory && student.beltHistory.length > 0 ? (
                       <Table>
                         <TableHeader>
-                          <TableRow className="border-white/10 hover:bg-transparent">
+                          <TableRow className="border-border hover:bg-transparent">
                             <TableHead className="text-right text-muted-foreground">
                               דרגה
                             </TableHead>
@@ -500,9 +500,9 @@ export function StudentDetailsModal({
                           {student.beltHistory.map((entry) => (
                             <TableRow
                               key={entry.id}
-                              className="border-white/5 hover:bg-white/[0.04]"
+                              className="border-border/50 hover:bg-muted/40"
                             >
-                              <TableCell className="font-medium text-white">
+                              <TableCell className="font-medium text-foreground">
                                 {entry.beltName}
                               </TableCell>
                               <TableCell
@@ -533,7 +533,7 @@ export function StudentDetailsModal({
                 </Card>
               </div>
 
-              <div className="flex justify-start gap-2 border-t border-white/10 pt-6 mt-2">
+              <div className="flex justify-start gap-2 border-t border-border pt-6 mt-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -550,7 +550,7 @@ export function StudentDetailsModal({
           </>
         ) : student && !isLoading && !loadError && mode === "edit" ? (
           <div className="space-y-6">
-            <h2 className="text-xl font-bold text-white">עריכת פרטי תלמיד</h2>
+            <h2 className="text-xl font-bold text-foreground">עריכת פרטי תלמיד</h2>
             <StudentEditForm
               student={toEditFormData(student)}
               centers={centers}
@@ -560,7 +560,7 @@ export function StudentDetailsModal({
               hideNavigation
               onSuccess={handleEditSuccess}
             />
-            <div className="flex justify-start border-t border-white/10 pt-6 mt-2">
+            <div className="flex justify-start border-t border-border pt-6 mt-2">
               <Button variant="outline" size="sm" onClick={() => setMode("view")}>
                 ביטול
               </Button>

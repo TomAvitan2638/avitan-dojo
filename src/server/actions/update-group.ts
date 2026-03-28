@@ -8,6 +8,7 @@ import type { TrainingDay } from "@prisma/client";
 
 export type UpdateGroupState = {
   error?: string;
+  success?: boolean;
 };
 
 type ScheduleInput = {
@@ -80,5 +81,5 @@ export async function updateGroup(
 
   revalidatePath("/dashboard/groups");
   revalidatePath(`/dashboard/groups/${groupId}`);
-  redirect(`/dashboard/groups/${groupId}`);
+  return { success: true };
 }

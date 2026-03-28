@@ -15,7 +15,7 @@ export const AuthInput = React.forwardRef<HTMLInputElement, AuthInputProps>(
       <div className="space-y-2">
         <label
           htmlFor={inputId}
-          className="block text-sm font-medium text-white/90"
+          className="block text-base font-medium text-foreground"
         >
           {label}
         </label>
@@ -25,14 +25,14 @@ export const AuthInput = React.forwardRef<HTMLInputElement, AuthInputProps>(
           aria-invalid={Boolean(error)}
           aria-describedby={error ? `${inputId}-err` : undefined}
           className={cn(
-            "h-11 border-white/15 bg-black/30 text-white placeholder:text-white/40",
-            error && "border-red-400/80 focus-visible:ring-red-400/50",
+            "h-11 border-input bg-popover text-foreground placeholder:text-muted-foreground",
+            error && "border-destructive/80 focus-visible:ring-destructive/40",
             className
           )}
           {...props}
         />
         {error ? (
-          <p id={`${inputId}-err`} className="text-sm text-red-300" role="alert">
+          <p id={`${inputId}-err`} className="text-base text-destructive" role="alert">
             {error}
           </p>
         ) : null}

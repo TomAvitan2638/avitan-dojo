@@ -8,6 +8,7 @@ import { uploadInstructorPhoto } from "@/server/utils/upload-instructor-photo";
 
 export type UpdateInstructorState = {
   error?: string;
+  success?: boolean;
 };
 
 export async function updateInstructor(
@@ -68,5 +69,5 @@ export async function updateInstructor(
 
   revalidatePath("/dashboard/instructors");
   revalidatePath(`/dashboard/instructors/${instructorId}`);
-  redirect(`/dashboard/instructors/${instructorId}`);
+  return { success: true };
 }

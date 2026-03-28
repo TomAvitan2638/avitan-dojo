@@ -89,7 +89,7 @@ export function MfaVerifyForm() {
   if (bootLoading) {
     return (
       <AuthCard title="אימות דו-שלבי" subtitle="טוען…">
-        <div className="py-8 text-center text-white/70">טוען…</div>
+        <div className="py-8 text-center text-base text-muted-foreground">טוען…</div>
       </AuthCard>
     );
   }
@@ -97,7 +97,7 @@ export function MfaVerifyForm() {
   if (setupError) {
     return (
       <AuthCard title="אימות דו-שלבי">
-        <p className="text-center text-sm text-red-200" role="alert">
+        <p className="text-center text-base text-destructive" role="alert">
           {setupError}
         </p>
       </AuthCard>
@@ -128,7 +128,7 @@ export function MfaVerifyForm() {
 
         {formError ? (
           <p
-            className="rounded-lg bg-red-950/50 px-3 py-2 text-center text-sm text-red-200"
+            className="rounded-lg bg-destructive/10 px-3 py-2 text-center text-base text-destructive"
             role="alert"
           >
             {formError}

@@ -29,7 +29,7 @@ function DialogContent({
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay
         className={cn(
-          "fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+          "fixed inset-0 z-50 bg-foreground/40 backdrop-blur-[1px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
           overlayClassName
         )}
       />
@@ -78,7 +78,7 @@ function DialogDescription(
 ) {
   return (
     <DialogPrimitive.Description
-      className="text-sm text-muted-foreground"
+      className="text-base text-muted-foreground"
       {...props}
     />
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,13 +48,30 @@ type InstructorOption = {
 type Props = {
   center: CenterFormData;
   instructors: InstructorOption[];
+  noRedirect?: boolean;
+  hideNavigation?: boolean;
+  onSuccess?: () => void;
+  onCancel?: () => void;
 };
 
-export function CenterEditForm({ center, instructors }: Props) {
+export function CenterEditForm({
+  center,
+  instructors,
+  noRedirect = false,
+  hideNavigation = false,
+  onSuccess,
+  onCancel,
+}: Props) {
   const [state, formAction] = useFormState(
     updateCenter.bind(null, center.id),
     null
   );
+
+  useEffect(() => {
+    if (state?.success && onSuccess) {
+      onSuccess();
+    }
+  }, [state?.success, onSuccess]);
 
   return (
     <Card className="border-border/50 bg-card max-w-2xl">
@@ -62,6 +80,9 @@ export function CenterEditForm({ center, instructors }: Props) {
       </CardHeader>
       <CardContent>
         <form action={formAction} className="grid gap-4">
+          {noRedirect ? (
+            <input type="hidden" name="noRedirect" value="true" />
+          ) : null}
           <div className="grid gap-2">
             <Label htmlFor="name">שם המרכז</Label>
             <Input
@@ -118,9 +139,15 @@ export function CenterEditForm({ center, instructors }: Props) {
           )}
           <div className="flex gap-2">
             <CenterEditSubmitButton />
-            <Button variant="outline" asChild>
-              <Link href={`/dashboard/centers/${center.id}`}>ביטול</Link>
-            </Button>
+            {hideNavigation && onCancel ? (
+              <Button type="button" variant="outline" onClick={onCancel}>
+                ביטול
+              </Button>
+            ) : (
+              <Button variant="outline" asChild>
+                <Link href={`/dashboard/centers/${center.id}`}>ביטול</Link>
+              </Button>
+            )}
           </div>
         </form>
       </CardContent>
