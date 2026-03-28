@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -30,6 +30,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { StudentEditForm } from "@/app/(dashboard)/dashboard/students/[id]/student-edit-form";
+import { RECORD_DIALOG_AUTOCLOSE_MS } from "@/components/record-dialog/record-dialog-save-ux";
 import { format } from "date-fns";
 
 export type StudentFormData = {
@@ -179,6 +180,9 @@ export function StudentDetailsModal({
   const [mode, setMode] = useState<"view" | "edit">(
     initialEditMode ? "edit" : "view"
   );
+  const autoCloseAfterSaveRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
 
   useEffect(() => {
     if (open && student) {
@@ -186,8 +190,20 @@ export function StudentDetailsModal({
     }
   }, [open, student?.id, initialEditMode]);
 
+  useEffect(() => {
+    return () => {
+      if (autoCloseAfterSaveRef.current != null) {
+        clearTimeout(autoCloseAfterSaveRef.current);
+      }
+    };
+  }, []);
+
   const handleOpenChange = (next: boolean) => {
     if (!next) {
+      if (autoCloseAfterSaveRef.current != null) {
+        clearTimeout(autoCloseAfterSaveRef.current);
+        autoCloseAfterSaveRef.current = null;
+      }
       setMode("view");
       onClose?.();
     }
@@ -196,6 +212,13 @@ export function StudentDetailsModal({
 
   const handleEditSuccess = () => {
     onSaveSuccess?.();
+    if (autoCloseAfterSaveRef.current != null) {
+      clearTimeout(autoCloseAfterSaveRef.current);
+    }
+    autoCloseAfterSaveRef.current = setTimeout(() => {
+      autoCloseAfterSaveRef.current = null;
+      handleOpenChange(false);
+    }, RECORD_DIALOG_AUTOCLOSE_MS);
   };
 
   if (!student && !isLoading && !loadError) return null;

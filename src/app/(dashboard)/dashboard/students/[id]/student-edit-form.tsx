@@ -470,15 +470,6 @@ export function StudentEditForm({
               אישור רפואי
             </Label>
           </div>
-          {showSuccess && (
-            <div
-              className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-600 dark:text-green-400"
-              role="status"
-            >
-              <CheckCircle className="h-5 w-5 shrink-0" />
-              השמירה בוצעה בהצלחה
-            </div>
-          )}
           {showError && (
             <p className="text-sm text-destructive" role="alert">
               {state.error}
