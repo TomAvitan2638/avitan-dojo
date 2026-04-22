@@ -13,7 +13,7 @@
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:migrate:init": "prisma migrate dev --name initial_schema",
-    "vercel-build": "prisma migrate deploy && next build",
+    "vercel-build": "next build",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "db:backfill-student-status": "npx ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/backfill-student-status.ts",
