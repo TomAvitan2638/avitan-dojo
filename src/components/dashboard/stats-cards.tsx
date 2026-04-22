@@ -1,16 +1,9 @@
 import type { ComponentType } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Users, AlertCircle, Layers, CreditCard } from "lucide-react";
+import { Users, AlertCircle, Layers } from "lucide-react";
 import type { DashboardStats } from "@/server/services/dashboard-service";
 import { cn } from "@/lib/utils";
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("he-IL", {
-    style: "currency",
-    currency: "ILS",
-    minimumFractionDigits: 0,
-  }).format(amount);
-}
+import { MonthlyPaymentsStatCard } from "@/components/dashboard/monthly-payments-stat-card";
 
 function formatChange(value: number): string {
   if (value > 0) return `+${value}`;
@@ -72,20 +65,6 @@ export function StatsCards({ stats }: Props) {
       icon: Layers,
       color: "text-emerald-500",
       bgColor: "bg-emerald-500/10",
-    },
-    {
-      title: "תשלומים החודש",
-      value: formatCurrency(stats.monthlyPayments.thisMonth),
-      change:
-        stats.monthlyPayments.deltaPercent != null
-          ? `${stats.monthlyPayments.deltaPercent >= 0 ? "+" : ""}${stats.monthlyPayments.deltaPercent}%`
-          : formatChange(stats.monthlyPayments.delta) !== "0"
-            ? formatChange(stats.monthlyPayments.delta)
-            : "—",
-      changeLabel: "מהחודש שעבר",
-      icon: CreditCard,
-      color: "text-dojo-gold",
-      bgColor: "bg-dojo-gold/10",
     },
   ];
 
@@ -151,6 +130,7 @@ export function StatsCards({ stats }: Props) {
           </Card>
         );
       })}
+      <MonthlyPaymentsStatCard monthlyPayments={stats.monthlyPayments} />
     </div>
   );
 }

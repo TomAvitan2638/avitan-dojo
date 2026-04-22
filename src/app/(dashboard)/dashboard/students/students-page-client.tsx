@@ -264,6 +264,13 @@ export function StudentsPageClient({ queryScope }: Props) {
     }
   };
 
+  const refreshModalStudent = useCallback(async () => {
+    if (!modalStudent?.id) return;
+    const r = await getStudentForModal(modalStudent.id);
+    if (r.ok) setModalStudent(r.student);
+    await invalidateStudentsPageQueries(queryClient);
+  }, [modalStudent?.id, queryClient]);
+
   const cellClass =
     "py-3.5 px-4 text-[15px] align-middle text-right";
   const headerClass =
@@ -816,6 +823,7 @@ export function StudentsPageClient({ queryScope }: Props) {
         open={modalOpen}
         onOpenChange={handleModalOpenChange}
         onSaveSuccess={handleModalSaveSuccess}
+        onStudentDataRefresh={refreshModalStudent}
         initialEditMode={modalInitialEditMode}
       />
 

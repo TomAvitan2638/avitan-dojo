@@ -3,6 +3,35 @@ import type { CurrentUser } from "@/lib/auth";
 import { startOfMonth, endOfMonth, subMonths, startOfDay } from "date-fns";
 import type { Prisma } from "@prisma/client";
 
+/** Hebrew calendar month names (January = index 0), for income-by-month UI. */
+const HEBREW_MONTH_LABELS = [
+  "ינואר",
+  "פברואר",
+  "מרץ",
+  "אפריל",
+  "מאי",
+  "יוני",
+  "יולי",
+  "אוגוסט",
+  "ספטמבר",
+  "אוקטובר",
+  "נובמבר",
+  "דצמבר",
+] as const;
+
+export type MonthlyIncomeMonthRow = {
+  monthIndex: number;
+  label: string;
+  studentTotal: number;
+  coachTotal: number;
+  total: number;
+};
+
+export type MonthlyIncomeForYearResult = {
+  year: number;
+  months: MonthlyIncomeMonthRow[];
+};
+
 export type DashboardStats = {
   activeStudents: {
     count: number;
@@ -25,6 +54,13 @@ export type DashboardStats = {
     delta?: number;
   };
   monthlyPayments: {
+    /** Sum of student `Payment.amount` in the month (all types, same scope as before). */
+    studentThisMonth: number;
+    studentLastMonth: number;
+    /** Instructor→owner fees; 0 for INSTRUCTOR role. */
+    coachThisMonth: number;
+    coachLastMonth: number;
+    /** student + coach */
     thisMonth: number;
     lastMonth: number;
     delta: number;
@@ -148,7 +184,19 @@ export async function getDashboardStats(user: CurrentUser): Promise<DashboardSta
     ? { student: { memberships: { some: { group: instructorFilter } } } }
     : {};
 
-  const [paymentsThisMonthResult, paymentsLastMonthResult] = await Promise.all([
+  const coachDateThis = {
+    paymentDate: { gte: thisMonthStart, lte: thisMonthEnd },
+  } as const;
+  const coachDateLast = {
+    paymentDate: { gte: lastMonthStart, lte: lastMonthEnd },
+  } as const;
+
+  const [
+    paymentsThisMonthResult,
+    paymentsLastMonthResult,
+    coachThisMonthResult,
+    coachLastMonthResult,
+  ] = await Promise.all([
     prisma.payment.aggregate({
       where: {
         ...paymentsWhere,
@@ -163,14 +211,31 @@ export async function getDashboardStats(user: CurrentUser): Promise<DashboardSta
       },
       _sum: { amount: true },
     }),
+    user.role === "ADMIN"
+      ? prisma.instructorPayment.aggregate({
+          where: coachDateThis,
+          _sum: { amount: true },
+        })
+      : Promise.resolve({ _sum: { amount: null } }),
+    user.role === "ADMIN"
+      ? prisma.instructorPayment.aggregate({
+          where: coachDateLast,
+          _sum: { amount: true },
+        })
+      : Promise.resolve({ _sum: { amount: null } }),
   ]);
 
-  const paymentsThisMonth = Number(paymentsThisMonthResult._sum.amount ?? 0);
-  const paymentsLastMonth = Number(paymentsLastMonthResult._sum.amount ?? 0);
-  const delta = paymentsThisMonth - paymentsLastMonth;
+  const studentThisMonth = Number(paymentsThisMonthResult._sum.amount ?? 0);
+  const studentLastMonth = Number(paymentsLastMonthResult._sum.amount ?? 0);
+  const coachThisMonth = Number(coachThisMonthResult._sum.amount ?? 0);
+  const coachLastMonth = Number(coachLastMonthResult._sum.amount ?? 0);
+
+  const thisMonthTotal = studentThisMonth + coachThisMonth;
+  const lastMonthTotal = studentLastMonth + coachLastMonth;
+  const delta = thisMonthTotal - lastMonthTotal;
   const deltaPercent =
-    paymentsLastMonth > 0
-      ? Math.round((delta / paymentsLastMonth) * 100)
+    lastMonthTotal > 0
+      ? Math.round((delta / lastMonthTotal) * 100)
       : null;
 
   return {
@@ -191,10 +256,70 @@ export async function getDashboardStats(user: CurrentUser): Promise<DashboardSta
       delta: groupsCreatedThisMonth - groupsCreatedLastMonth,
     },
     monthlyPayments: {
-      thisMonth: paymentsThisMonth,
-      lastMonth: paymentsLastMonth,
+      studentThisMonth,
+      studentLastMonth,
+      coachThisMonth,
+      coachLastMonth,
+      thisMonth: thisMonthTotal,
+      lastMonth: lastMonthTotal,
       delta,
       deltaPercent,
     },
   };
+}
+
+/**
+ * Per calendar month: student Payment sums + InstructorPayment sums (admin only),
+ * same paymentDate rules as dashboard income KPI.
+ */
+export async function getMonthlyIncomeForYear(
+  year: number,
+  user: CurrentUser
+): Promise<MonthlyIncomeForYearResult> {
+  if (!Number.isInteger(year) || year < 1970 || year > 2100) {
+    throw new RangeError("Invalid year");
+  }
+
+  const instructorFilter = buildInstructorFilter(user);
+  const paymentsWhere: Prisma.PaymentWhereInput = instructorFilter
+    ? { student: { memberships: { some: { group: instructorFilter } } } }
+    : {};
+
+  // One month at a time: same aggregates as before, but avoids spiking the DB pool
+  // with 24 concurrent queries (12 months × 2), which can fail under pool limits.
+  const months: MonthlyIncomeMonthRow[] = [];
+  for (let monthIndex = 0; monthIndex < HEBREW_MONTH_LABELS.length; monthIndex++) {
+    const label = HEBREW_MONTH_LABELS[monthIndex];
+    const monthStart = startOfMonth(new Date(year, monthIndex, 1));
+    const monthEnd = endOfMonth(monthStart);
+    const dateRange = { gte: monthStart, lte: monthEnd };
+
+    const [paymentAgg, coachAgg] = await Promise.all([
+      prisma.payment.aggregate({
+        where: {
+          ...paymentsWhere,
+          paymentDate: dateRange,
+        },
+        _sum: { amount: true },
+      }),
+      user.role === "ADMIN"
+        ? prisma.instructorPayment.aggregate({
+            where: { paymentDate: dateRange },
+            _sum: { amount: true },
+          })
+        : Promise.resolve({ _sum: { amount: null } }),
+    ]);
+
+    const studentTotal = Number(paymentAgg._sum.amount ?? 0);
+    const coachTotal = Number(coachAgg._sum.amount ?? 0);
+    months.push({
+      monthIndex,
+      label,
+      studentTotal,
+      coachTotal,
+      total: studentTotal + coachTotal,
+    });
+  }
+
+  return { year, months };
 }

@@ -13,6 +13,10 @@ import { invalidateStudentsPageAndDashboardHome } from "@/lib/students-page-quer
 import { StudentImageUpload } from "@/components/students/student-image-upload";
 import { formNativeSelectClassName } from "@/lib/form-field";
 import { Loader2, CheckCircle } from "lucide-react";
+import {
+  RecordDialogCancelButton,
+  RecordDialogPrimarySubmitButton,
+} from "@/components/record-dialog/record-dialog-save-ux";
 import Link from "next/link";
 
 function SubmitButton({
@@ -95,6 +99,7 @@ type Props = {
   beltLevels: BeltOption[];
   noRedirect?: boolean;
   hideNavigation?: boolean;
+  onCancel?: () => void;
   onSuccess?: () => void;
 };
 
@@ -105,6 +110,7 @@ export function StudentEditForm({
   beltLevels,
   noRedirect = false,
   hideNavigation = false,
+  onCancel,
   onSuccess,
 }: Props) {
   const queryClient = useQueryClient();
@@ -476,12 +482,19 @@ export function StudentEditForm({
             </p>
           )}
           <div className="flex flex-wrap gap-2 border-t border-border pt-6 mt-2">
-            <SubmitButton
-              hideNavigation={hideNavigation}
-              showSavedState={showSuccess}
-            />
-            {!hideNavigation && (
+            {hideNavigation ? (
               <>
+                <RecordDialogPrimarySubmitButton />
+                {onCancel ? (
+                  <RecordDialogCancelButton onClick={onCancel} />
+                ) : null}
+              </>
+            ) : (
+              <>
+                <SubmitButton
+                  hideNavigation={hideNavigation}
+                  showSavedState={showSuccess}
+                />
                 <Button variant="outline" asChild>
                   <Link href={`/dashboard/students/${student.id}`}>
                     חזרה לפרטי תלמיד

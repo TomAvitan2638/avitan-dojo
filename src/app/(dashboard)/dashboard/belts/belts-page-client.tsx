@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -19,6 +20,7 @@ import {
 } from "@/components/belts/belt-history-modal";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { deleteBeltHistory } from "@/server/actions/delete-belt-history";
 
 type StudentRow = {
   id: string;
@@ -85,6 +87,7 @@ export function BeltsPageClient({
   pageSize,
   totalPages,
 }: Props) {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [sortColumn, setSortColumn] = useState<SortColumn>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
@@ -92,6 +95,32 @@ export function BeltsPageClient({
     null
   );
   const [modalOpen, setModalOpen] = useState(false);
+
+  const handleDeleteBeltHistoryEntry = async (
+    entryId: string
+  ): Promise<{ success?: boolean; error?: string }> => {
+    if (!modalStudent) return { error: "אין תלמיד פעיל" };
+    const studentId = modalStudent.id;
+    const result = await deleteBeltHistory(entryId, studentId);
+    if (!result.success) {
+      return { error: result.error ?? "מחיקה נכשלה" };
+    }
+
+    setModalStudent((prev) => {
+      if (!prev || prev.id !== studentId) return prev;
+      const remaining = prev.beltHistory.filter((h) => h.id !== entryId);
+      const latest = remaining[0];
+      return {
+        ...prev,
+        beltHistory: remaining,
+        currentBeltName: latest?.beltName ?? null,
+        currentBeltDate: latest?.promotionDate ?? null,
+      };
+    });
+
+    router.refresh();
+    return { success: true };
+  };
 
   const filteredAndSortedStudents = useMemo(() => {
     const filtered = students.filter((s) => matchesSearch(s, searchQuery));
@@ -348,6 +377,7 @@ export function BeltsPageClient({
         student={modalStudent}
         open={modalOpen}
         onOpenChange={setModalOpen}
+        onDeleteEntry={handleDeleteBeltHistoryEntry}
       />
     </>
   );

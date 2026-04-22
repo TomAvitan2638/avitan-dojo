@@ -11,14 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   User,
   MapPin,
   Users,
@@ -30,6 +22,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { StudentEditForm } from "@/app/(dashboard)/dashboard/students/[id]/student-edit-form";
+import { StudentBeltHistoryReadOnly } from "@/components/students/student-belt-history-read-only";
 import { RECORD_DIALOG_AUTOCLOSE_MS } from "@/components/record-dialog/record-dialog-save-ux";
 import { format } from "date-fns";
 
@@ -117,6 +110,8 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   onClose?: () => void;
   onSaveSuccess?: () => void;
+  /** Refetch modal student after belt history delete (parent supplies `getStudentForModal`). */
+  onStudentDataRefresh?: () => Promise<void>;
   initialEditMode?: boolean;
 };
 
@@ -175,6 +170,7 @@ export function StudentDetailsModal({
   onOpenChange,
   onClose,
   onSaveSuccess,
+  onStudentDataRefresh,
   initialEditMode = false,
 }: Props) {
   const [mode, setMode] = useState<"view" | "edit">(
@@ -493,67 +489,10 @@ export function StudentDetailsModal({
                   </CardContent>
                 </Card>
 
-                <Card className="border-border bg-card sm:col-span-2">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base text-foreground">
-                      <Award className="h-4 w-4" />
-                      היסטוריית דרגות
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {student.beltHistory && student.beltHistory.length > 0 ? (
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="border-border hover:bg-transparent">
-                            <TableHead className="text-right text-muted-foreground">
-                              דרגה
-                            </TableHead>
-                            <TableHead className="text-right text-muted-foreground">
-                              תאריך קבלת דרגה
-                            </TableHead>
-                            <TableHead className="text-right text-muted-foreground">
-                              מספר תעודה
-                            </TableHead>
-                            <TableHead className="text-right text-muted-foreground">
-                              תאריך עדכון
-                            </TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {student.beltHistory.map((entry) => (
-                            <TableRow
-                              key={entry.id}
-                              className="border-border/50 hover:bg-muted/40"
-                            >
-                              <TableCell className="font-medium text-foreground">
-                                {entry.beltName}
-                              </TableCell>
-                              <TableCell
-                                dir="ltr"
-                                className="text-muted-foreground tabular-nums"
-                              >
-                                {entry.promotionDate}
-                              </TableCell>
-                              <TableCell className="text-muted-foreground">
-                                {entry.certificateNumber ?? "—"}
-                              </TableCell>
-                              <TableCell
-                                dir="ltr"
-                                className="text-muted-foreground tabular-nums text-sm"
-                              >
-                                {entry.createdAt}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    ) : (
-                      <p className="py-4 text-center text-muted-foreground">
-                        אין היסטוריית דרגות
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
+                <StudentBeltHistoryReadOnly
+                  beltHistory={student.beltHistory}
+                  fullWidth
+                />
               </div>
 
               <div className="flex justify-start gap-2 border-t border-border pt-6 mt-2">
@@ -575,19 +514,22 @@ export function StudentDetailsModal({
           <div className="space-y-6">
             <h2 className="text-xl font-bold text-foreground">עריכת פרטי תלמיד</h2>
             <StudentEditForm
+              key={`edit-${student.id}-belt-${student.beltHistory?.[0]?.id ?? "none"}`}
               student={toEditFormData(student)}
               centers={centers}
               groups={groups}
               beltLevels={beltLevels}
               noRedirect
               hideNavigation
+              onCancel={() => setMode("view")}
               onSuccess={handleEditSuccess}
             />
-            <div className="flex justify-start border-t border-border pt-6 mt-2">
-              <Button variant="outline" size="sm" onClick={() => setMode("view")}>
-                ביטול
-              </Button>
-            </div>
+            <StudentBeltHistoryReadOnly
+              beltHistory={student.beltHistory}
+              allowDelete
+              studentId={student.id}
+              onAfterDeleteSuccess={onStudentDataRefresh}
+            />
           </div>
         ) : null}
       </DialogContent>

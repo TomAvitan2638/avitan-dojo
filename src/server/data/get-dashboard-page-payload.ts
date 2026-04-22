@@ -9,6 +9,7 @@ import {
   getUpcomingBirthdays,
   getLatePayments,
 } from "@/server/services/reminder-service";
+import { getLateInstructorPayments } from "@/server/services/instructor-payment-service";
 import type { DashboardPagePayload } from "@/types/dashboard-page";
 
 export { getDashboardPageScope } from "@/lib/dashboard-page-scope";
@@ -24,15 +25,22 @@ export async function getDashboardPagePayload(
 ): Promise<DashboardPagePayload> {
   const t0All = performance.now();
 
-  const [stats, birthdays, latePayments] = await Promise.all([
-    timeDashboardSection("getDashboardStats", () => getDashboardStats(user)),
-    timeDashboardSection("getUpcomingBirthdays", () =>
-      getUpcomingBirthdays(user)
-    ),
-    timeDashboardSection("getLatePayments", () => getLatePayments(user)),
-  ]);
+  const [stats, birthdays, latePayments, lateInstructorPayments] =
+    await Promise.all([
+      timeDashboardSection("getDashboardStats", () => getDashboardStats(user)),
+      timeDashboardSection("getUpcomingBirthdays", () =>
+        getUpcomingBirthdays(user)
+      ),
+      timeDashboardSection("getLatePayments", () => getLatePayments(user)),
+      timeDashboardSection("getLateInstructorPayments", () =>
+        getLateInstructorPayments(user)
+      ),
+    ]);
 
-  logDashboardPayloadTotal("Promise.all(stats,birthdays,latePayments)", t0All);
+  logDashboardPayloadTotal(
+    "Promise.all(stats,birthdays,latePayments,lateInstructorPayments)",
+    t0All
+  );
 
-  return { stats, birthdays, latePayments };
+  return { stats, birthdays, latePayments, lateInstructorPayments };
 }

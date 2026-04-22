@@ -104,8 +104,45 @@ model Instructor {
   user    User?     @relation
   centers Center[]
   groups  Group[]
+  instructorPayments      InstructorPayment[]
+  instructorPaymentMonths InstructorPaymentMonth[]
 
   @@map("instructors")
+}
+
+/// One payment event from an instructor to the dojo owner (full amount on this row). Covered calendar months live on {@link InstructorPaymentMonth}.
+model InstructorPayment {
+  id           String   @id @default(uuid())
+  instructorId String   @map("instructor_id")
+  amount       Decimal  @db.Decimal(10, 2)
+  paymentDate  DateTime @map("payment_date") @db.Date
+  notes        String?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  instructor Instructor               @relation(fields: [instructorId], references: [id], onDelete: Restrict)
+  months     InstructorPaymentMonth[]
+
+  @@index([instructorId])
+  @@index([paymentDate])
+  @@map("instructor_payments")
+}
+
+/// Calendar months covered by a single {@link InstructorPayment}. `instructorId` is denormalized for uniqueness (no duplicate month coverage per instructor).
+model InstructorPaymentMonth {
+  id                  String @id @default(uuid())
+  instructorPaymentId String @map("instructor_payment_id")
+  instructorId        String @map("instructor_id")
+  year                Int
+  month               Int
+
+  instructorPayment InstructorPayment @relation(fields: [instructorPaymentId], references: [id], onDelete: Cascade)
+  instructor        Instructor        @relation(fields: [instructorId], references: [id], onDelete: Restrict)
+
+  @@unique([instructorPaymentId, year, month])
+  @@unique([instructorId, year, month])
+  @@index([instructorId])
+  @@index([year, month])
+  @@map("instructor_payment_months")
 }
 
 // ---------------------------------------------------------------------------

@@ -85,6 +85,8 @@ import {
   invalidatePaymentsPageAndDashboardHome,
   invalidatePaymentsPageQueries,
 } from "@/lib/payments-page-query";
+import { AdminPaymentsAreaTabs } from "@/components/payments/admin-payments-area-tabs";
+import { CoachPaymentsSection } from "@/components/payments/coach-payments-section";
 
 type PaymentRow = PaymentListRow;
 type SystemDataRow = PaymentsSystemDataRow;
@@ -112,6 +114,11 @@ export function PaymentsPageClient({ queryScope }: Props) {
     return { page, search, filterType, filterSubtype };
   }, [searchParams]);
 
+  const paymentsAreaTab =
+    searchParams.get("paymentsTab") === "instructors" ? "instructors" : "students";
+  const isAdmin = queryScope.role === "ADMIN";
+  const studentPaymentsQueryEnabled = !isAdmin || paymentsAreaTab === "students";
+
   const syncPaymentsCache = useCallback(async () => {
     await invalidatePaymentsPageQueries(queryClient);
   }, [queryClient]);
@@ -123,7 +130,11 @@ export function PaymentsPageClient({ queryScope }: Props) {
     refetch,
     isPending: paymentsQueryPending,
     isFetching: paymentsQueryFetching,
-  } = usePaymentsPageQuery({ scope: queryScope, listParams });
+  } = usePaymentsPageQuery({
+    scope: queryScope,
+    listParams,
+    enabled: studentPaymentsQueryEnabled,
+  });
 
   const payments = data?.payments ?? [];
   const sportsEquipment = data?.sportsEquipment ?? [];
@@ -133,7 +144,8 @@ export function PaymentsPageClient({ queryScope }: Props) {
   const pageSize = data?.pageSize ?? 25;
   const totalPages = data?.totalPages ?? 1;
 
-  const loadingWithoutData = paymentsQueryPending && !data;
+  const loadingWithoutData =
+    studentPaymentsQueryEnabled && paymentsQueryPending && !data;
   const [createOpen, setCreateOpen] = useState(false);
   const createSuccessHandledRef = React.useRef(false);
   const { state, formAction, submitBusy } = useWrappedFormState(createPayment, null);
@@ -421,7 +433,21 @@ export function PaymentsPageClient({ queryScope }: Props) {
 
   const monthlyStudents = selectorStudents.filter((s) => s.hasActiveMembership);
 
-  if (isError && !data) {
+  if (isAdmin && paymentsAreaTab === "instructors") {
+    return (
+      <TooltipProvider>
+        <div className="mb-4">
+          <AdminPaymentsAreaTabs current="instructors" />
+        </div>
+        <p className="mb-4 text-sm text-muted-foreground max-w-xl leading-relaxed">
+          רישום תשלומי דמי מאמן לבעל הדוג׳ו — נפרד מתשלומי תלמידים.
+        </p>
+        <CoachPaymentsSection />
+      </TooltipProvider>
+    );
+  }
+
+  if (studentPaymentsQueryEnabled && isError && !data) {
     return (
       <TooltipProvider>
         <Card className="border-destructive/30 bg-card">
@@ -467,6 +493,11 @@ export function PaymentsPageClient({ queryScope }: Props) {
 
   return (
     <TooltipProvider>
+      {isAdmin && (
+        <div className="mb-4">
+          <AdminPaymentsAreaTabs current="students" />
+        </div>
+      )}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-lg font-medium text-foreground">היסטוריית תשלומים</h2>
         <Dialog

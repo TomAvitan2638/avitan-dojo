@@ -17,13 +17,16 @@ const GC_MS = 600_000;
 type Options = {
   scope: PaymentsPageQueryScope;
   listParams: PaymentsPageListParams;
+  /** When false, the student payments list is not fetched (e.g. admin on instructor tab). */
+  enabled?: boolean;
 };
 
-export function usePaymentsPageQuery({ scope, listParams }: Options) {
+export function usePaymentsPageQuery({ scope, listParams, enabled = true }: Options) {
   return useQuery<PaymentsPagePayload>({
     queryKey: paymentsPageQueryKey(scope, listParams),
     queryFn: () => fetchPaymentsPagePayload(listParams),
     staleTime: STALE_MS,
     gcTime: GC_MS,
+    enabled,
   });
 }

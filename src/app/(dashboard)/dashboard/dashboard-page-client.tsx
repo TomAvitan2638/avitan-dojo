@@ -60,7 +60,10 @@ export function DashboardPageClient({ queryScope }: Props) {
       <StatsCards stats={data.stats} />
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <BirthdaysWidget birthdays={data.birthdays} />
-        <OverduePaymentsWidget items={data.latePayments} />
+        <OverduePaymentsWidget
+          items={data.latePayments}
+          instructorItems={data.lateInstructorPayments}
+        />
       </div>
     </>
   );
